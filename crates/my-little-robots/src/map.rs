@@ -8,8 +8,8 @@ pub enum TileType {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub(crate) struct Map {
-    width: usize,
-    height: usize,
+    pub width: usize,
+    pub height: usize,
     tiles: Vec<TileType>,
 }
 
@@ -20,5 +20,15 @@ impl Map {
             height,
             tiles: vec![TileType::Floor; width * height],
         }
+    }
+
+    /// Transform 2d coordinate to 1D idx
+    pub fn map_idx(&self, x: usize, y: usize) -> usize {
+        self.width * y + x
+    }
+
+    /// Get the TileType at x and y coordinate
+    pub fn tile_at(&self, x: usize, y: usize) -> TileType {
+        self.tiles[self.map_idx(x, y)]
     }
 }

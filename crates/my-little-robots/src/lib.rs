@@ -1,4 +1,5 @@
-mod map;
+pub mod application;
+pub mod map;
 
 use crate::map::Map;
 use async_trait::async_trait;
