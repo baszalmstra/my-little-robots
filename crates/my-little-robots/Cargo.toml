@@ -1,0 +1,16 @@
+[package]
+name = "mlr"
+version = "0.1.0"
+authors = ["Bas Zalmstra <zalmstra.bas@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0.117"
+serde_derive = "1.0.117"
+serde_json = "1.0.59"
+async-trait = "0.1.41"
+anyhow = "1.0.33"
+thiserror = "1.0.21"
+futures = "0.3.6"
