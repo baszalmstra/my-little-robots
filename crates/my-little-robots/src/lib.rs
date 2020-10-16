@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::future::join_all;
-use futures::TryFutureExt;
+use futures::{TryFutureExt, StreamExt};
 use serde_derive::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::time::Duration;
@@ -18,7 +18,7 @@ pub struct World {}
 impl World {
     /// Applies the specified `actions` to an instance and returns a modified instance where these
     /// actions have been applied.
-    fn apply(self, actions: impl Iterator<Item = Action>) -> Self {
+    fn apply(self, actions: impl IntoIterator<Item = Action>) -> Self {
         self
     }
 
@@ -87,15 +87,37 @@ pub struct Player {
 /// Runs a single turn on the world
 pub async fn turn(players: &mut [Player], world: World) -> World {
     // Get the actions from all the players
-    let player_actions = join_all(players.iter_mut().map(|player| {
-        let player_world = world.player_world(player.id);
-        player.runner.run(player_world)
+    let actions = join_all(players.iter_mut().map(|player| {
+        let player_id = player.id;
+        let world_ref = &world;
+        async move {
+            let player_world = world_ref.player_world(player_id);
+            player.runner.run(player_world).await.map_or_else(|err| {
+                log::error!("Player {:?}: {}", player_id, err);
+                None
+            },
+            move |player_actions| {
+                Some(player_actions
+                    .into_iter()
+                    .map(|action| validate_action(action, player_id, world_ref))
+                    .filter_map(|action| match action {
+                        Ok(action) => Some(action),
+                        Err(err) => {
+                            log::error!("Player {:?}: invalid action: {}", player_id, err);
+                            None
+                        }
+                    })
+                    .collect::<Vec<Action>>())
+            })
+        }
     }))
-    .await;
+    .await
+    .into_iter()
+    .filter_map(|a| a)
+    .flatten();
 
-    // Validate all the actions of the players
-
-    world
+    // Run all actions on the world
+    world.apply(actions.into_iter())
 }
 
 /// An error that might occur when a user sends an action that is not possible.
