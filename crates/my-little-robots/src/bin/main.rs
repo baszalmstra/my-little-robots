@@ -3,8 +3,6 @@ use mlr::RunnerInput;
 use mlr::{Player, PlayerAction};
 use mlr::{RunnerOutput, World};
 
-mod lib;
-
 fn player_run(_input: RunnerInput) -> RunnerOutput {
     println!("Hoi Wereld");
     Ok(vec![PlayerAction::DoNothing])
@@ -15,7 +13,7 @@ fn main() {
 
     async_std::task::block_on(async {
         // Create the world
-        let mut world = World {};
+        let mut world = World::new();
 
         // Create a player to run
         let player = Player {

@@ -1,3 +1,6 @@
+mod map;
+
+use crate::map::Map;
 use async_trait::async_trait;
 use futures::future::join_all;
 use futures::{StreamExt, TryFutureExt};
@@ -13,9 +16,17 @@ pub struct PlayerId(pub usize);
 
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
-pub struct World {}
+pub struct World {
+    map: Map,
+}
 
 impl World {
+    pub fn new() -> World {
+        World {
+            map: Map::new(80, 50),
+        }
+    }
+
     /// Applies the specified `actions` to an instance and returns a modified instance where these
     /// actions have been applied.
     fn apply(self, actions: impl IntoIterator<Item = Action>) -> Self {
