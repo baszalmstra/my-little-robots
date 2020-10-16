@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::future::join_all;
-use futures::{TryFutureExt, StreamExt};
+use futures::{StreamExt, TryFutureExt};
 use serde_derive::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::time::Duration;
@@ -92,23 +92,27 @@ pub async fn turn(players: &mut [Player], world: World) -> World {
         let world_ref = &world;
         async move {
             let player_world = world_ref.player_world(player_id);
-            player.runner.run(player_world).await.map_or_else(|err| {
-                log::error!("Player {:?}: {}", player_id, err);
-                None
-            },
-            move |player_actions| {
-                Some(player_actions
-                    .into_iter()
-                    .map(|action| validate_action(action, player_id, world_ref))
-                    .filter_map(|action| match action {
-                        Ok(action) => Some(action),
-                        Err(err) => {
-                            log::error!("Player {:?}: invalid action: {}", player_id, err);
-                            None
-                        }
-                    })
-                    .collect::<Vec<Action>>())
-            })
+            player.runner.run(player_world).await.map_or_else(
+                |err| {
+                    log::error!("Player {:?}: {}", player_id, err);
+                    None
+                },
+                move |player_actions| {
+                    Some(
+                        player_actions
+                            .into_iter()
+                            .map(|action| validate_action(action, player_id, world_ref))
+                            .filter_map(|action| match action {
+                                Ok(action) => Some(action),
+                                Err(err) => {
+                                    log::error!("Player {:?}: invalid action: {}", player_id, err);
+                                    None
+                                }
+                            })
+                            .collect::<Vec<Action>>(),
+                    )
+                },
+            )
         }
     }))
     .await
