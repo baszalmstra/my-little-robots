@@ -71,7 +71,7 @@ type RunnerOutput = Result<Vec<PlayerAction>, RunnerError>;
 #[async_trait]
 impl<F> PlayerRunner for F
 where
-    F: FnMut(RunnerInput) -> RunnerOutput,
+    F: FnMut(RunnerInput) -> RunnerOutput + Send,
 {
     async fn run(&mut self, input: RunnerInput) -> RunnerOutput {
         (self)(input)
@@ -86,17 +86,19 @@ struct Player {
 
 /// Runs a single turn on the world
 async fn turn(players: &mut [Player], world: World) -> World {
-    let actions = join_all(players.iter_mut().map(|player| async {
+
+    // Get the actions from all the players
+    let player_actions = join_all(players.iter_mut().map(|player| {
         let player_world = world.player_world(player.id);
-        player.runner.run(player_world).await.and_then(|actions| {
-            Result::from_iter(
-                actions
-                    .into_iter()
-                    .map(|a| validate_action(a, player.id, &world)),
-            )
-        })
+        player.runner.run(player_world)
     }))
     .await;
+
+    // Validate all the actions of the players
+    
+
+
+    world
 }
 
 /// An error that might occur when a user sends an action that is not possible.
