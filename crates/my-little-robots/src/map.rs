@@ -1,3 +1,4 @@
+use super::Coord;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -13,6 +14,9 @@ pub(crate) struct Map {
     tiles: Vec<TileType>,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct MapCoord(usize);
+
 impl Map {
     pub fn new(width: usize, height: usize) -> Map {
         Map {
@@ -22,13 +26,27 @@ impl Map {
         }
     }
 
-    /// Transform 2d coordinate to 1D idx
-    pub fn map_idx(&self, x: usize, y: usize) -> usize {
-        self.width * y + x
+    /// Checks if the given coordinate is within the bounds of the map
+    pub fn in_bounds(&self, position: Coord) -> bool {
+        position.x >= 0
+            || position.x < self.width as isize
+            || position.y >= 0
+            || position.y < self.height as isize
+    }
+
+    /// Checks if this tile can be entered
+    pub fn can_enter_tile(&self, position: Coord) -> bool {
+        self.in_bounds(position)
+            && self.tiles[self.map_coord_from_coord(position).0] == TileType::Floor
+    }
+
+    /// Computes the `MapCoord` from the specified `Coord`
+    fn map_coord_from_coord(&self, position: Coord) -> MapCoord {
+        MapCoord(position.x as usize + position.y as usize * self.width)
     }
 
     /// Get the TileType at x and y coordinate
-    pub fn tile_at(&self, x: usize, y: usize) -> TileType {
-        self.tiles[self.map_idx(x, y)]
+    pub fn tile_at<T: Into<Coord>>(&self, position: T) -> TileType {
+        self.tiles[self.map_coord_from_coord(position.into()).0]
     }
 }
