@@ -1,4 +1,5 @@
 use crate::map::TileType;
+use crate::Coord;
 use crate::World;
 use bracket_lib::prelude::*;
 use std::sync::mpsc::Receiver;
@@ -29,15 +30,27 @@ fn glyph_for(tile_type: TileType) -> FontCharType {
 
 /// Draw the actual world
 pub fn draw_world(world: &World, ctx: &mut BTerm) {
-    let height = world.map.height;
-    let width = world.map.width;
+    let height = world.map.height as isize;
+    let width = world.map.width as isize;
 
+    // Draw map
     for y in 0..height {
         for x in 0..width {
-            let glyph = glyph_for(world.map.tile_at(x, y));
-            ctx.set(x, y, WHITE, BLACK, glyph);
+            let glyph = glyph_for(world.map.tile_at((x, y)));
+            ctx.set(x, y, GRAY, BLACK, glyph);
         }
     }
+
+    // Draw units
+    world.units.iter().for_each(|unit| {
+        ctx.set(
+            unit.location.x,
+            unit.location.y,
+            LIGHTGREEN,
+            BLACK,
+            to_cp437('R'),
+        )
+    })
 }
 
 pub fn run(world: World, world_recv: Receiver<World>) -> BError {
