@@ -9,11 +9,11 @@ use thiserror::Error;
 /// A `PlayerId` uniquely describes a single Player
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
-struct PlayerId(usize);
+pub struct PlayerId(pub usize);
 
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
-struct World {}
+pub struct World {}
 
 impl World {
     /// Applies the specified `actions` to an instance and returns a modified instance where these
@@ -30,13 +30,13 @@ impl World {
 
 /// A `PlayerWorld` represents only the visible parts of a world for a specific player.
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
-struct PlayerWorld {
+pub struct PlayerWorld {
     pub player_id: PlayerId,
 }
 
 /// Describes a possible action that can be performed in the world as ordered by a specific player.
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
-enum PlayerAction {}
+pub enum PlayerAction {}
 
 /// Describes an action in the world which may have been undertaken by any player
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
@@ -44,13 +44,13 @@ enum Action {}
 
 /// The PlayerRunner can be implemented to produce actions for a current snapshot of the world.
 #[async_trait]
-trait PlayerRunner {
+pub trait PlayerRunner {
     /// Given the current state of the world, returns the actions that should be executed.
     async fn run(&mut self, input: RunnerInput) -> RunnerOutput;
 }
 
 #[derive(Serialize, Deserialize, Error, Debug)]
-enum RunnerError {
+pub enum RunnerError {
     #[error("internal error")]
     InternalError,
 
@@ -62,10 +62,10 @@ enum RunnerError {
 }
 
 /// The input for a `PlayerRunner`
-type RunnerInput = PlayerWorld;
+pub type RunnerInput = PlayerWorld;
 
 /// The output of a `PlayerRunner`
-type RunnerOutput = Result<Vec<PlayerAction>, RunnerError>;
+pub type RunnerOutput = Result<Vec<PlayerAction>, RunnerError>;
 
 // Implement `PlayerRunner` for a functions
 #[async_trait]
@@ -79,14 +79,13 @@ where
 }
 
 /// Represents everything of a specific player.
-struct Player {
-    id: PlayerId,
-    runner: Box<dyn PlayerRunner>,
+pub struct Player {
+    pub id: PlayerId,
+    pub runner: Box<dyn PlayerRunner>,
 }
 
 /// Runs a single turn on the world
-async fn turn(players: &mut [Player], world: World) -> World {
-
+pub async fn turn(players: &mut [Player], world: World) -> World {
     // Get the actions from all the players
     let player_actions = join_all(players.iter_mut().map(|player| {
         let player_world = world.player_world(player.id);
@@ -95,8 +94,6 @@ async fn turn(players: &mut [Player], world: World) -> World {
     .await;
 
     // Validate all the actions of the players
-    
-
 
     world
 }
