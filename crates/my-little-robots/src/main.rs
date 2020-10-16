@@ -1,16 +1,18 @@
-use mlr::Player;
 use mlr::PlayerId;
 use mlr::RunnerInput;
+use mlr::{Player, PlayerAction};
 use mlr::{RunnerOutput, World};
 
 mod lib;
 
 fn player_run(_input: RunnerInput) -> RunnerOutput {
     println!("Hoi Wereld");
-    Ok(Vec::new())
+    Ok(vec![PlayerAction::DoNothing])
 }
 
 fn main() {
+    env_logger::init();
+
     async_std::task::block_on(async {
         // Create the world
         let mut world = World {};

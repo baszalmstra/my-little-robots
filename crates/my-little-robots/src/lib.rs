@@ -36,7 +36,9 @@ pub struct PlayerWorld {
 
 /// Describes a possible action that can be performed in the world as ordered by a specific player.
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
-pub enum PlayerAction {}
+pub enum PlayerAction {
+    DoNothing,
+}
 
 /// Describes an action in the world which may have been undertaken by any player
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
