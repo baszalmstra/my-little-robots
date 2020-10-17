@@ -70,7 +70,7 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
             let (color, glyph) = glyph_for((x, y).into(), &world.map);
             let color = if !visible_tiles.contains(&pos) {
                 let mut color = color.into();
-                color.a = 0.5;
+                color.a = 0.2;
                 color
             } else {
                 color.into()

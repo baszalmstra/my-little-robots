@@ -25,6 +25,7 @@ pub struct World {
 impl Default for World {
     fn default() -> World {
         World {
+            //map: new_map_test(80, 50),
             map: new_map_prim(80, 50),
             units: Vec::new(),
         }

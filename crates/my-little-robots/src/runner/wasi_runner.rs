@@ -1,11 +1,9 @@
 use crate::PlayerRunner;
-use async_std::io::{BufReader, BufWriter};
 use mlr_api::{PlayerInput, PlayerMemory, PlayerOutput, RunnerError};
-use std::io::{BufRead, Cursor};
+use std::io::BufRead;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
 use wasi_common::virtfs::pipe::{ReadPipe, WritePipe};
 use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{Wasi, WasiCtxBuilder};
@@ -35,11 +33,10 @@ impl PlayerRunner for WasiRunner {
         let mut input_json = serde_json::to_vec(&input)?;
         input_json.push(b'\n');
 
-        let mut output = Arc::new(RwLock::new(Vec::<u8>::new()));
+        let output = Arc::new(RwLock::new(Vec::<u8>::new()));
 
         {
             let wasi_ctx = WasiCtxBuilder::new()
-                .inherit_stdout()
                 .stdout(WritePipe::from_shared(output.clone()))
                 .stdin(ReadPipe::from(input_json))
                 .build()
@@ -48,16 +45,20 @@ impl PlayerRunner for WasiRunner {
             let wasi = Wasi::new(&store, wasi_ctx);
             wasi.add_to_linker(&mut linker)
                 .map_err(|_| RunnerError::InternalError)?;
-            linker
-                .module("", &self.module)
+
+            let instance = linker
+                .instantiate(&self.module)
                 .map_err(|_| RunnerError::InternalError)?;
-            let default_export = linker
-                .get_default("")
-                .map_err(|_| RunnerError::InternalError)?;
+            let default_export = instance
+                .get_func("_start")
+                .ok_or(RunnerError::InternalError)?;
+
+            // linker.module("", &module).map_err(|_| RunnerError::InternalError)?;
+            // let default_export = linker.get_default("").map_err(|_| RunnerError::InternalError)?;
             let entrypoint = default_export
                 .get0::<()>()
                 .map_err(|_| RunnerError::InternalError)?;
-            let result = entrypoint().map_err(|e| {
+            entrypoint().map_err(|e| {
                 eprintln!("err: {}", e);
                 RunnerError::InternalError
             })?;
@@ -76,7 +77,5 @@ impl PlayerRunner for WasiRunner {
                 println!("Player {:?}: {}", input.player_id, line);
             }
         }
-
-        Err(RunnerError::InternalError)
     }
 }
