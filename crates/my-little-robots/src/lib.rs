@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use self::map::Map;
 pub use self::unit::{Unit, UnitId};
-use crate::map::{new_map_test, TileType};
+use crate::map::{new_map_prim, new_map_test, TileType};
 use bracket_lib::prelude::Point;
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};
@@ -103,6 +103,16 @@ impl Direction {
             _ => Direction::Down,
         }
     }
+
+    /// Returns a vector of all directions
+    pub fn all_directions() -> Vec<Direction> {
+        vec![
+            Direction::Left,
+            Direction::Right,
+            Direction::Down,
+            Direction::Up,
+        ]
+    }
 }
 
 impl From<Direction> for Coord {
@@ -119,7 +129,7 @@ impl From<Direction> for Coord {
 impl Default for World {
     fn default() -> World {
         World {
-            map: new_map_test(80, 50),
+            map: new_map_prim(80, 50),
             units: Vec::new(),
         }
     }
