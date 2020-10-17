@@ -1,13 +1,12 @@
-use mlr::RunnerInput;
-use mlr::World;
-use mlr::{application, RunnerError};
-use mlr::{Coord, Direction};
-use mlr::{GameState, PlayerId};
-use mlr::{Player, PlayerAction};
-use mlr::{RunnerOutput, Unit};
+use mlr::application;
+use mlr::runner::Runner;
+use mlr::GameState;
+use mlr::Player;
+use mlr::{random_direction, World};
+use mlr_api::{Coord, PlayerAction, PlayerId, PlayerInput, PlayerOutput, RunnerError, Unit};
 use serde_json::json;
 
-fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
+fn player_run(input: PlayerInput) -> Result<PlayerOutput, RunnerError> {
     let mut rng = rand::thread_rng();
 
     // Get all units
@@ -20,10 +19,10 @@ fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
     // Move all units
     let mut actions = Vec::new();
     for unit in my_units {
-        actions.push(PlayerAction::Move(unit.id, Direction::random(&mut rng)));
+        actions.push(PlayerAction::Move(unit.id, random_direction(&mut rng)));
     }
 
-    Ok(RunnerOutput {
+    Ok(PlayerOutput {
         actions,
         memory: input.memory,
     })
@@ -32,11 +31,21 @@ fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
 fn main() {
     env_logger::init();
 
+    let example_location = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(format!("example-player{}", std::env::consts::EXE_SUFFIX));
+    println!(
+        "Assuming that the example-player application is located at: {}",
+        example_location.display()
+    );
+
     let mut game_state = GameState {
         players: vec![
             Player {
                 id: PlayerId(0),
-                runner: Box::new(player_run),
+                runner: Box::new(Runner::new_cmd(example_location, vec!["drol"])),
                 memory: json!({}),
             },
             Player {
@@ -61,13 +70,9 @@ fn main() {
 
     // Spawn a unit for every player
     for (i, player) in game_state.players.iter().enumerate() {
-        game_state.world.spawn_unit(
-            player.id,
-            Coord {
-                x: 10 + i as isize * 10,
-                y: 10,
-            },
-        );
+        game_state
+            .world
+            .spawn_unit(player.id, Coord::new(10 + i as isize * 10, 10));
     }
 
     // Create the world

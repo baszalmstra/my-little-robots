@@ -1,24 +1,11 @@
 use super::Coord;
-use crate::Direction;
+use crate::random_direction;
 use bracket_lib::prelude::{field_of_view_set, Algorithm2D, BaseMap, Point};
+use mlr_api::{Direction, TileType};
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Index, IndexMut};
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub enum TileType {
-    Wall,
-    Floor,
-    Exit,
-}
-
-impl TileType {
-    /// Returns true if this is a type of tile that can be entered
-    fn can_enter(self) -> bool {
-        matches!(self, TileType::Floor | TileType::Exit)
-    }
-}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub(crate) struct Map {
@@ -66,9 +53,9 @@ impl Map {
 
     /// Returns all the coordinates that can be seen from the given location and within the given range
     pub fn field_of_view(&self, position: Coord, range: isize) -> HashSet<Coord> {
-        field_of_view_set(position.into(), range as i32, self)
+        field_of_view_set(Point::new(position.x, position.y), range as i32, self)
             .into_iter()
-            .map(Into::into)
+            .map(|p| Coord::new(p.x, p.y))
             .collect()
     }
 }
@@ -109,7 +96,7 @@ pub(crate) fn new_map_test(width: usize, height: usize) -> Map {
 
     // Sample a random direction for the exit
     let mut rng = rand::thread_rng();
-    let exit_direction = Direction::random(&mut rng);
+    let exit_direction = random_direction(&mut rng);
     let exit_size = 10;
     let (mut start, dir): (Coord, Direction) = match exit_direction {
         Direction::Left => (
@@ -122,11 +109,11 @@ pub(crate) fn new_map_test(width: usize, height: usize) -> Map {
         ),
         Direction::Up => (
             (rng.gen_range(0, width - exit_size), 0).into(),
-            Direction::Left,
+            Direction::Right,
         ),
         Direction::Down => (
             (rng.gen_range(0, width - exit_size), height - 1).into(),
-            Direction::Left,
+            Direction::Right,
         ),
     };
     for _i in 0..exit_size {
