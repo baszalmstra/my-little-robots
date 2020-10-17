@@ -2,6 +2,7 @@ use crate::map::{Map, TileType};
 use crate::World;
 use crate::{Coord, PlayerId, Unit};
 use bracket_lib::prelude::*;
+use std::collections::HashSet;
 
 struct ApplicationState {
     world_receiver: async_watch::Receiver<World>,
@@ -13,6 +14,7 @@ impl GameState for ApplicationState {
         let world = self.world_receiver.borrow();
 
         // Draw the world
+        ctx.cls();
         draw_world(&world, ctx);
     }
 }
@@ -52,10 +54,26 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
     let height = world.map.height as isize;
     let width = world.map.width as isize;
 
+    let visible_tiles: HashSet<Coord> = world
+        .units
+        .iter()
+        .map(|unit| world.map.field_of_view(unit.location, 7))
+        .flatten()
+        .collect();
+
     // Draw map
     for y in 0..height {
         for x in 0..width {
+            let pos: Coord = (x, y).into();
+
             let (color, glyph) = glyph_for((x, y).into(), &world.map);
+            let color = if !visible_tiles.contains(&pos) {
+                let mut color = color.into();
+                color.a = 0.5;
+                color
+            } else {
+                color.into()
+            };
             ctx.set(x, y, color, BLACK, glyph);
         }
     }

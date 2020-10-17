@@ -10,6 +10,7 @@ use thiserror::Error;
 use self::map::Map;
 pub use self::unit::{Unit, UnitId};
 use crate::map::{new_map_test, TileType};
+use bracket_lib::prelude::Point;
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};
 use std::ops::{Add, AddAssign};
@@ -31,6 +32,18 @@ pub struct World {
 pub struct Coord {
     pub x: isize,
     pub y: isize,
+}
+
+impl From<Coord> for Point {
+    fn from(coord: Coord) -> Self {
+        Point::new(coord.x, coord.y)
+    }
+}
+
+impl From<Point> for Coord {
+    fn from(coord: Point) -> Self {
+        Coord::new(coord.x as isize, coord.y as isize)
+    }
 }
 
 // Conversion from a tuple
@@ -139,6 +152,7 @@ impl World {
                 .filter(|unit| unit.player == player_id)
                 .cloned()
                 .collect(),
+            tiles: Vec::new(),
         }
     }
 
@@ -166,6 +180,14 @@ impl World {
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
 pub struct PlayerWorld {
     pub units: Vec<Unit>,
+    pub tiles: Vec<PlayerTile>,
+}
+
+/// Represents a tile visible to a specific player
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
+pub struct PlayerTile {
+    pub coord: Coord,
+    pub tile_type: TileType,
 }
 
 /// Describes a possible action that can be performed in the world as ordered by a specific player.

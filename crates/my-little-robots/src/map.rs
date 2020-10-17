@@ -1,7 +1,9 @@
 use super::Coord;
 use crate::Direction;
+use bracket_lib::prelude::{field_of_view_set, Algorithm2D, BaseMap, Point};
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -23,6 +25,18 @@ pub(crate) struct Map {
     pub width: usize,
     pub height: usize,
     tiles: Vec<TileType>,
+}
+
+impl BaseMap for Map {
+    fn is_opaque(&self, idx: usize) -> bool {
+        self.tiles[idx as usize] == TileType::Wall
+    }
+}
+
+impl Algorithm2D for Map {
+    fn dimensions(&self) -> Point {
+        Point::new(self.width, self.height)
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -48,6 +62,14 @@ impl Map {
     /// Checks if this tile can be entered
     pub fn can_enter_tile(&self, position: Coord) -> bool {
         self.in_bounds(position) && self[position].can_enter()
+    }
+
+    /// Returns all the coordinates that can be seen from the given location and within the given range
+    pub fn field_of_view(&self, position: Coord, range: isize) -> HashSet<Coord> {
+        field_of_view_set(position.into(), range as i32, self)
+            .into_iter()
+            .map(Into::into)
+            .collect()
     }
 }
 
