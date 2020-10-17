@@ -108,6 +108,7 @@ fn try_main() -> anyhow::Result<()> {
 
 enum RunnerDesc {
     Command { command: String, args: Vec<String> },
+    Source { source: PathBuf },
 }
 
 impl RunnerDesc {
@@ -141,14 +142,15 @@ impl RunnerDesc {
         }
     }
 
-    fn from_path(_source: PathBuf) -> anyhow::Result<Self> {
-        bail!("we do not yet support running from path")
+    fn from_path(source: PathBuf) -> anyhow::Result<Self> {
+        Ok(RunnerDesc::Source { source })
     }
 
     /// Construct a runner from this description
     pub fn into_runner(self) -> anyhow::Result<Runner> {
         match self {
             RunnerDesc::Command { command, args } => Ok(Runner::new_cmd(command, args)),
+            RunnerDesc::Source { source } => Runner::new_wasm(source),
         }
     }
 }
