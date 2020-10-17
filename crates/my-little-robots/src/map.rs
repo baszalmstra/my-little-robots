@@ -1,6 +1,7 @@
 use super::Coord;
 use bracket_lib::prelude::{field_of_view_set, Algorithm2D, BaseMap, Point};
 use mlr_api::{Direction, TileType};
+use rand::prelude::IteratorRandom;
 use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -85,28 +86,25 @@ impl<T: Into<Coord>> IndexMut<T> for Map {
     }
 }
 
-/// Get the type of the  tiles around the given coordinate
-/// in the directions RIGHT, LEFT, UP, DOWN
-/// returns a tuple with the coordinate and the TileType
-fn get_frontier_tiles(
-    map: &Map,
-    position: Coord,
-) -> impl Iterator<Item = (Coord, Direction, &TileType)> {
+fn get_frontier_tiles(map: &Map, position: Coord) -> Vec<Coord> {
     let directions = Direction::all_directions();
-    directions.into_iter().filter_map(move |direction| {
-        let mutation = Coord::from(direction);
-        // Frontier tiles are set with a space of 2 tiles
-        // and are blocked within the grid
-        let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-        if map.in_bounds(new_coord) && map[new_coord] == TileType::Wall {
-            Some((new_coord, direction, &map[new_coord]))
-        } else {
-            None
-        }
-    })
+    directions
+        .into_iter()
+        .filter_map(move |direction| {
+            let mutation = Coord::from(direction);
+            // Frontier tiles are set with a space of 2 tiles
+            // and are blocked within the grid
+            let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
+            if map.in_bounds(new_coord) && map[new_coord] == TileType::Wall {
+                Some(new_coord)
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
-fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<(Coord, Direction)> {
+fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<Direction> {
     let directions = Direction::all_directions();
     directions
         .into_iter()
@@ -116,7 +114,7 @@ fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<(Coord, Direction)> {
             // and are blocked within the grid
             let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
             if map.in_bounds(new_coord) && map[new_coord] == TileType::Floor {
-                Some((new_coord, direction))
+                Some(direction)
             } else {
                 None
             }
@@ -124,6 +122,13 @@ fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<(Coord, Direction)> {
         .collect()
 }
 
+/// A Grid consists of a 2 dimensional array of cells.
+/// A Cell has 2 states: Blocked or Passage.
+/// Start with a Grid full of Cells in state Blocked.
+/// Pick a random Cell, set it to state Passage and Compute its frontier cells. A frontier cell of a Cell is a cell with distance 2 in state Blocked and within the grid.
+/// While the list of frontier cells is not empty:
+///     Pick a random frontier cell from the list of frontier cells.
+///     Let neighbors(frontierCell) = All cells in distance 2 in state Passage. Pick a random neighbor and connect the frontier cell with the neighbor by setting the cell in-between to state Passage. Compute the frontier cells of the chosen frontier cell and add them to the frontier list. Remove the chosen frontier cell from the list of frontier cells.
 pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
     let mut map = Map::new_closed(width, height);
     let mut rng = rand::thread_rng();
@@ -135,52 +140,42 @@ pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
     map[start] = TileType::Floor;
 
     // Get walls around the start position
-    let mut frontier_cells = get_frontier_tiles(&map, start)
-        .map(|t| (t.0, t.1))
-        .collect::<Vec<(Coord, Direction)>>();
+    let mut frontier_cells = get_frontier_tiles(&map, start);
 
-    dbg!(start);
     while !frontier_cells.is_empty() {
         // Select random frontier cell
         let index = rng.gen_range(0, frontier_cells.len());
-        let (frontier_cell, _) = frontier_cells.remove(index);
+        let frontier_cell = frontier_cells.remove(index);
         map[frontier_cell] = TileType::Floor;
-        dbg!(frontier_cell);
+
+        // Select neighbors
         let neighbors = get_neighbor_tiles(&map, frontier_cell);
-        dbg!(&neighbors);
-        let (_, between_dir) = neighbors[rng.gen_range(0, neighbors.len())];
+        let between_dir = neighbors[rng.gen_range(0, neighbors.len())];
+
         // Create passage in between
         let mutation = Coord::from(between_dir);
         let in_between = Coord::new(frontier_cell.x + mutation.x, frontier_cell.y + mutation.y);
         map[in_between] = TileType::Floor;
 
-        //// Append new walls
-        let new_frontier = get_frontier_tiles(&map, frontier_cell).map(|t| (t.0, t.1));
+        // Append new walls
+        let new_frontier = get_frontier_tiles(&map, frontier_cell);
         for new_frontier_cell in new_frontier {
-            if !visited.contains(&new_frontier_cell.0) {
+            if !visited.contains(&new_frontier_cell) {
                 frontier_cells.push(new_frontier_cell);
-                visited.insert(new_frontier_cell.0);
+                visited.insert(new_frontier_cell);
             }
         }
+    }
 
-        //if !visited.contains(&to) {
-        //// Set the visited as floor
-        //map[to] = TileType::Floor;
-        //// Set the tile in-between as a floor
-        //let mutation = Coord::from(dir);
-        //let in_between = Coord::new(from.x + mutation.x, from.y + mutation.y);
-        //if map.in_bounds(in_between) {
-        //map[in_between] = TileType::Floor;
-        //}
-        //// We have visited this
-        //visited.insert(to);
-        //// Append new walls
-        //let mut new_frontier = get_frontier_tiles(&map, to).map(|t| (t.0, t.1)).collect();
-        //frontier_cells.append(&mut new_frontier);
-
-        //// Set new from
-        //from = to;
-        //}
+    // Set a random exit for now
+    if let Some((tile_idx, _)) = map
+        .tiles
+        .iter()
+        .enumerate()
+        .filter(|t| *t.1 == TileType::Floor)
+        .choose(&mut rng)
+    {
+        map.tiles[tile_idx] = TileType::Exit;
     }
 
     map
