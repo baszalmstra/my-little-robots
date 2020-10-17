@@ -1,17 +1,19 @@
-use mlr::application;
 use mlr::PlayerId;
 use mlr::RunnerInput;
 use mlr::World;
+use mlr::{application, RunnerError};
 use mlr::{Coord, Direction};
 use mlr::{Player, PlayerAction};
 use mlr::{RunnerOutput, Unit};
+use serde_json::json;
 use std::sync::mpsc::channel;
 
-fn player_run(input: RunnerInput) -> RunnerOutput {
-    println!("Hoi Wereld");
+fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
+    let mut rng = rand::thread_rng();
 
     // Get all units
     let (my_units, _other_units): (Vec<&Unit>, Vec<&Unit>) = input
+        .world
         .units
         .iter()
         .partition(|u| u.player == input.player_id);
@@ -19,17 +21,20 @@ fn player_run(input: RunnerInput) -> RunnerOutput {
     // Move all units
     let mut actions = Vec::new();
     for unit in my_units {
-        actions.push(PlayerAction::Move(unit.id, Direction::Left));
+        actions.push(PlayerAction::Move(unit.id, Direction::random(&mut rng)));
     }
 
-    Ok(actions)
+    Ok(RunnerOutput {
+        actions,
+        memory: input.memory,
+    })
 }
 
 fn main() {
     env_logger::init();
 
     // Create the world
-    let mut world = World::new();
+    let mut world = World::default();
     let world_clone = world.clone();
 
     let (sender, reciever) = channel();
@@ -37,15 +42,32 @@ fn main() {
     std::thread::spawn(|| {
         async_std::task::block_on(async move {
             // Create a player to run
-            let player = Player {
-                id: PlayerId(0),
-                runner: Box::new(player_run),
-            };
-            let mut players = [player];
+            let mut players = [
+                Player {
+                    id: PlayerId(0),
+                    runner: Box::new(player_run),
+                    memory: json!({}),
+                },
+                Player {
+                    id: PlayerId(1),
+                    runner: Box::new(player_run),
+                    memory: json!({}),
+                },
+                Player {
+                    id: PlayerId(2),
+                    runner: Box::new(player_run),
+                    memory: json!({}),
+                },
+                Player {
+                    id: PlayerId(3),
+                    runner: Box::new(player_run),
+                    memory: json!({}),
+                },
+            ];
 
             // Spawn a unit for every player
             for (i, player) in players.iter().enumerate() {
-                world.spawn(
+                world.spawn_unit(
                     player.id,
                     Coord {
                         x: 10 + i as isize * 10,
@@ -60,7 +82,10 @@ fn main() {
                 sender
                     .send(world.clone())
                     .expect("Could not send updated map");
-                async_std::task::sleep(std::time::Duration::from_millis(500)).await;
+                if world.units_on_exits().next().is_some() {
+                    break;
+                }
+                //async_std::task::sleep(std::time::Duration::from_millis(5)).await;
             }
         });
     });

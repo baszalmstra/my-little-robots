@@ -1,6 +1,6 @@
-use crate::map::TileType;
-use crate::Coord;
+use crate::map::{Map, TileType};
 use crate::World;
+use crate::{Coord, PlayerId, Unit};
 use bracket_lib::prelude::*;
 use std::sync::mpsc::Receiver;
 
@@ -21,10 +21,32 @@ impl GameState for ApplicationState {
 }
 
 /// Returns the correct glyph for the TileType
-fn glyph_for(tile_type: TileType) -> FontCharType {
+fn glyph_for(coord: Coord, map: &Map) -> (impl Into<RGBA>, FontCharType) {
+    let tile_type = map[coord];
     match tile_type {
-        TileType::Wall => to_cp437('#'),
-        TileType::Floor => to_cp437('.'),
+        TileType::Wall => (GRAY, to_cp437('#')),
+        TileType::Floor => (GRAY, to_cp437('.')),
+        TileType::Exit => (CYAN, to_cp437('>')),
+    }
+}
+
+fn player_color(player: PlayerId) -> impl Into<RGBA> {
+    match player.0 {
+        0 => LIGHTGREEN,
+        1 => BLUE_VIOLET,
+        2 => ORANGERED,
+        3 => GOLD,
+        _ => GRAY,
+    }
+}
+
+fn unit_glyph(unit: &Unit) -> FontCharType {
+    match unit.player.0 {
+        0 => to_cp437('♦'),
+        1 => to_cp437('♣'),
+        2 => to_cp437('¶'),
+        3 => to_cp437('♣'),
+        _ => to_cp437('♥'),
     }
 }
 
@@ -36,8 +58,8 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
     // Draw map
     for y in 0..height {
         for x in 0..width {
-            let glyph = glyph_for(world.map.tile_at((x, y)));
-            ctx.set(x, y, GRAY, BLACK, glyph);
+            let (color, glyph) = glyph_for((x, y).into(), &world.map);
+            ctx.set(x, y, color, BLACK, glyph);
         }
     }
 
@@ -46,15 +68,17 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
         ctx.set(
             unit.location.x,
             unit.location.y,
-            LIGHTGREEN,
+            player_color(unit.player),
             BLACK,
-            to_cp437('R'),
+            unit_glyph(unit),
         )
     })
 }
 
 pub fn run(world: World, world_recv: Receiver<World>) -> BError {
-    let context = BTermBuilder::simple80x50().build()?;
+    let context = BTermBuilder::simple80x50()
+        .with_title("My Little Robots")
+        .build()?;
     let application_state = ApplicationState { world, world_recv };
 
     // Run the main loop
