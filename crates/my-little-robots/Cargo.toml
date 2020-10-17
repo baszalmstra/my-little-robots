@@ -3,6 +3,7 @@ name = "mlr"
 version = "0.1.0"
 authors = ["Bas Zalmstra <zalmstra.bas@gmail.com>"]
 edition = "2018"
+default-run = "mlr"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,3 +21,10 @@ log = "0.4.11"
 bracket-lib = "0.8.1"
 rand = "0.7.3"
 async-watch = "0.3.1"
+async-process = "1.0.1"
+async-io = "1.1.10"
+mlr_api = { path="../api" }
+structopt = "0.3.20"
+clap = { version = "2.33", default-features = false }
+shell-words = "1.0.0"
+itertools = "0.9.0"

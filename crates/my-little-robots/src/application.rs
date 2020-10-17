@@ -1,7 +1,8 @@
-use crate::map::{Map, TileType};
+use crate::map::Map;
+use crate::Unit;
 use crate::World;
-use crate::{Coord, PlayerId, Unit};
 use bracket_lib::prelude::*;
+use mlr_api::{Coord, PlayerId, TileType};
 use std::collections::HashSet;
 
 struct ApplicationState {
