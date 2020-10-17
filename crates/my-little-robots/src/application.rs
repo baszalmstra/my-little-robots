@@ -24,7 +24,7 @@ impl GameState for ApplicationState {
 fn glyph_for(coord: Coord, map: &Map) -> (impl Into<RGBA>, FontCharType) {
     let tile_type = map[coord];
     match tile_type {
-        TileType::Wall => (GRAY, to_cp437('#')),
+        TileType::Wall => (WHITE, to_cp437('#')),
         TileType::Floor => (GRAY, to_cp437('.')),
         TileType::Exit => (CYAN, to_cp437('>')),
     }
