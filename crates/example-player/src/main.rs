@@ -18,6 +18,7 @@ fn tick(input: PlayerInput<Memory>) -> PlayerOutput<Memory> {
     } = input;
 
     memory.turn = turn;
+    let mut rng = rand::thread_rng();
 
     // Get all units
     let (my_units, _other_units): (Vec<&Unit>, Vec<&Unit>) =
@@ -26,7 +27,7 @@ fn tick(input: PlayerInput<Memory>) -> PlayerOutput<Memory> {
     // Move all units
     let mut actions = Vec::new();
     for unit in my_units {
-        actions.push(PlayerAction::Move(unit.id, Direction::Left));
+        actions.push(PlayerAction::Move(unit.id, Direction::random(&mut rng)));
     }
 
     PlayerOutput { actions, memory }

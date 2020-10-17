@@ -1,16 +1,16 @@
+use anyhow::Context;
+use anyhow::{anyhow, bail};
+use itertools::Itertools;
 use mlr::application;
 use mlr::runner::Runner;
 use mlr::GameState;
 use mlr::Player;
-use mlr::{World};
+use mlr::World;
 use mlr_api::{Coord, PlayerId};
-use structopt::StructOpt;
-use std::ffi::{OsString, OsStr};
-use anyhow::Context;
-use std::path::PathBuf;
-use anyhow::{bail, anyhow};
-use itertools::Itertools;
 use serde_json::json;
+use std::ffi::{OsStr, OsString};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(name = "my-little-robots CLI", author, setting = clap::AppSettings::DeriveDisplayOrder)]
@@ -26,34 +26,45 @@ struct Run {
     ///
     /// A runner is specified in one of the following ways:
     /// 1. `command:$PATH` or `localrunner:$PATH`. The path to a binary file.
-    #[structopt(parse(from_os_str), required = true, min_values = 2, verbatim_doc_comment)]
+    #[structopt(
+        parse(from_os_str),
+        required = true,
+        min_values = 2,
+        verbatim_doc_comment
+    )]
     runners: Vec<OsString>,
 }
 
 fn main() {
     if let Err(err) = try_main() {
         eprintln!("ERROR: {}", err);
-        err.chain().skip(1).for_each(|cause| eprintln!("because: {}", cause));
+        err.chain()
+            .skip(1)
+            .for_each(|cause| eprintln!("because: {}", cause));
         std::process::exit(1)
     }
 }
 
-fn try_main() -> anyhow::Result<()>
-{
+fn try_main() -> anyhow::Result<()> {
     env_logger::try_init()?;
 
     let opt: MyLittleRobots = MyLittleRobots::from_args();
 
     match opt {
         MyLittleRobots::Run(run_opt) => {
-            let players = run_opt.runners.iter().enumerate().map(|(i, r)| -> anyhow::Result<Player> {
-                let runner = RunnerDesc::parse(r)?;
-                Ok(Player {
-                    id: PlayerId(i),
-                    runner: Box::new(runner.into_runner()?),
-                    memory: json!({}),
+            let players = run_opt
+                .runners
+                .iter()
+                .enumerate()
+                .map(|(i, r)| -> anyhow::Result<Player> {
+                    let runner = RunnerDesc::parse(r)?;
+                    Ok(Player {
+                        id: PlayerId(i),
+                        runner: Box::new(runner.into_runner()?),
+                        memory: json!({}),
+                    })
                 })
-            }).collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<Vec<_>, _>>()?;
 
             let mut game_state = GameState {
                 players,
@@ -96,10 +107,7 @@ fn try_main() -> anyhow::Result<()>
 }
 
 enum RunnerDesc {
-    Command {
-        command: String,
-        args: Vec<String>
-    }
+    Command { command: String, args: Vec<String> },
 }
 
 impl RunnerDesc {
@@ -110,7 +118,9 @@ impl RunnerDesc {
         };
 
         let parse_command = |s| -> anyhow::Result<_> {
-            let mut args = shell_words::split(s).context("couldn't parse as shell arguments")?.into_iter();
+            let mut args = shell_words::split(s)
+                .context("couldn't parse as shell arguments")?
+                .into_iter();
             let command = args.next().ok_or_else(|| {
                 anyhow!("you must have at least one shell 'word' in the command string")
             })?;
@@ -123,7 +133,7 @@ impl RunnerDesc {
                 "command" => {
                     let (command, args) = parse_command(content)?;
                     Ok(Self::Command { command, args })
-                },
+                }
                 _ => bail!("unknown runner type {:?}", typ),
             }
         } else {
@@ -138,7 +148,7 @@ impl RunnerDesc {
     /// Construct a runner from this description
     pub fn into_runner(self) -> anyhow::Result<Runner> {
         match self {
-            RunnerDesc::Command { command, args } => Ok(Runner::new_cmd(command, args))
+            RunnerDesc::Command { command, args } => Ok(Runner::new_cmd(command, args)),
         }
     }
 }

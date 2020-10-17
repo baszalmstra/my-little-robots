@@ -1,5 +1,4 @@
 use super::Coord;
-use crate::random_direction;
 use bracket_lib::prelude::{field_of_view_set, Algorithm2D, BaseMap, Point};
 use mlr_api::{Direction, TileType};
 use rand::Rng;
@@ -96,7 +95,7 @@ pub(crate) fn new_map_test(width: usize, height: usize) -> Map {
 
     // Sample a random direction for the exit
     let mut rng = rand::thread_rng();
-    let exit_direction = random_direction(&mut rng);
+    let exit_direction = Direction::random(&mut rng);
     let exit_size = 10;
     let (mut start, dir): (Coord, Direction) = match exit_direction {
         Direction::Left => (

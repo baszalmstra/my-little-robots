@@ -210,13 +210,3 @@ fn validate_action(
         }
     }
 }
-
-/// Returns a random direction
-pub fn random_direction<Rng: rand::Rng>(r: &mut Rng) -> Direction {
-    match r.gen_range(0, 4) {
-        0 => Direction::Left,
-        1 => Direction::Right,
-        2 => Direction::Up,
-        _ => Direction::Down,
-    }
-}

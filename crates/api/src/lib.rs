@@ -126,6 +126,18 @@ impl std::ops::AddAssign<Direction> for Coord {
     }
 }
 
+impl Direction {
+    /// Returns a random direction
+    pub fn random<Rng: rand::Rng>(rng: &mut Rng) -> Self {
+        match rng.gen_range(0, 4) {
+            0 => Direction::Left,
+            1 => Direction::Right,
+            2 => Direction::Up,
+            _ => Direction::Down,
+        }
+    }
+}
+
 pub type PlayerMemory = serde_json::value::Value;
 
 #[derive(Serialize, Deserialize, Error, Debug)]
