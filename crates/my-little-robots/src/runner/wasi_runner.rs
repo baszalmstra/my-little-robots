@@ -7,16 +7,19 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use wasi_common::virtfs::pipe::{ReadPipe, WritePipe};
-use wasmtime::{Linker, Module, Store};
+use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{Wasi, WasiCtxBuilder};
 
 pub struct WasiRunner {
-    path_to_module: PathBuf,
+    engine: Engine,
+    module: Module,
 }
 
 impl WasiRunner {
     pub fn new(path_to_module: PathBuf) -> anyhow::Result<Self> {
-        Ok(WasiRunner { path_to_module })
+        let engine = Engine::default();
+        let module = Module::from_file(&engine, &path_to_module)?;
+        Ok(WasiRunner { engine, module })
     }
 }
 
@@ -26,7 +29,7 @@ impl PlayerRunner for WasiRunner {
         &mut self,
         input: PlayerInput<PlayerMemory>,
     ) -> Result<PlayerOutput<PlayerMemory>, RunnerError> {
-        let store = Store::default();
+        let store = Store::new(&self.engine);
         let mut linker = Linker::new(&store);
 
         let mut input_json = serde_json::to_vec(&input)?;
@@ -43,12 +46,10 @@ impl PlayerRunner for WasiRunner {
                 .map_err(|_| RunnerError::InternalError)?;
 
             let wasi = Wasi::new(&store, wasi_ctx);
-            wasi.add_to_linker(&mut linker);
-
-            let module = Module::from_file(store.engine(), &self.path_to_module)
+            wasi.add_to_linker(&mut linker)
                 .map_err(|_| RunnerError::InternalError)?;
             linker
-                .module("", &module)
+                .module("", &self.module)
                 .map_err(|_| RunnerError::InternalError)?;
             let default_export = linker
                 .get_default("")
