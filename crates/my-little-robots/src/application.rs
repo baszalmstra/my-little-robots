@@ -2,21 +2,18 @@ use crate::map::{Map, TileType};
 use crate::World;
 use crate::{Coord, PlayerId, Unit};
 use bracket_lib::prelude::*;
-use std::sync::mpsc::Receiver;
 
 struct ApplicationState {
-    world: World,
-    world_recv: Receiver<World>,
+    world_receiver: async_watch::Receiver<World>,
 }
 
 impl GameState for ApplicationState {
     fn tick(&mut self, ctx: &mut BTerm) {
         // Try to receive a new world
-        if let Ok(world) = self.world_recv.try_recv() {
-            self.world = world;
-        }
+        let world = self.world_receiver.borrow();
+
         // Draw the world
-        draw_world(&self.world, ctx);
+        draw_world(&world, ctx);
     }
 }
 
@@ -75,11 +72,11 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
     })
 }
 
-pub fn run(world: World, world_recv: Receiver<World>) -> BError {
+pub fn run(world_receiver: async_watch::Receiver<World>) -> BError {
     let context = BTermBuilder::simple80x50()
         .with_title("My Little Robots")
         .build()?;
-    let application_state = ApplicationState { world, world_recv };
+    let application_state = ApplicationState { world_receiver };
 
     // Run the main loop
     main_loop(context, application_state)

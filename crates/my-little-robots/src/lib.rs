@@ -3,7 +3,6 @@ pub mod map;
 mod unit;
 
 use async_trait::async_trait;
-use futures::future::join_all;
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
@@ -11,6 +10,8 @@ use thiserror::Error;
 use self::map::Map;
 pub use self::unit::{Unit, UnitId};
 use crate::map::{new_map_test, TileType};
+use futures::channel::mpsc::unbounded;
+use futures::{SinkExt, StreamExt};
 use std::ops::{Add, AddAssign};
 
 /// A `PlayerId` uniquely describes a single Player
@@ -181,7 +182,7 @@ enum Action {
 
 /// The PlayerRunner can be implemented to produce actions for a current snapshot of the world.
 #[async_trait]
-pub trait PlayerRunner {
+pub trait PlayerRunner: Send {
     /// Given the current state of the world, returns the actions that should be executed.
     async fn run(&mut self, input: RunnerInput) -> Result<RunnerOutput, RunnerError>;
 }
@@ -236,56 +237,68 @@ pub struct Player {
     pub memory: PlayerMemory,
 }
 
-/// Runs a single turn on the world
-pub async fn turn(players: &mut [Player], world: World) -> World {
-    // Get the actions from all the players
-    let actions = join_all(players.iter_mut().map(|player| {
-        let player_id = player.id;
-        let world_ref = &world;
-        async move {
-            // Let the runner run
-            let runner_output = player
-                .runner
-                .run(RunnerInput {
-                    player_id,
-                    world: world_ref.player_world(player_id),
-                    memory: player.memory.clone(),
-                })
-                .await;
+/// Represents the current game state
+pub struct GameState {
+    pub players: Vec<Player>,
+    pub world: World,
+    pub turn: usize,
+}
 
-            // Check the output for errors
-            let output = match runner_output {
-                Err(err) => {
-                    log::error!("Player {:?}: {}", player_id, err);
-                    return None;
-                }
-                Ok(output) => output,
-            };
+impl GameState {
+    pub async fn turn(mut self) -> Self {
+        let (action_sender, action_receiver) = unbounded();
+        let world_ref = &self.world;
+        let player_iter_fut = futures::stream::iter(self.players.iter_mut()).for_each_concurrent(
+            None,
+            move |player| {
+                let mut action_sender = action_sender.clone();
+                async move {
+                    // Construct the input for the player
+                    let player_input = RunnerInput {
+                        player_id: player.id,
+                        world: world_ref.player_world(player.id),
+                        memory: player.memory.clone(),
+                    };
 
-            // Validate all the actions
-            let mut actions = Vec::new();
-            for player_action in output.actions {
-                match validate_action(player_action, player_id, world_ref) {
-                    Err(err) => {
-                        log::error!("Player {:?}: invalid action: {}", player_id, err);
+                    // Run the player runner
+                    let player_result = player.runner.run(player_input).await;
+
+                    // Check the output for errors
+                    let output = match player_result {
+                        Err(err) => {
+                            log::error!("Player {:?}: {}", player.id, err);
+                            return;
+                        }
+                        Ok(output) => output,
+                    };
+
+                    // Validate all the actions
+                    for player_action in output.actions {
+                        match validate_action(player_action, player.id, world_ref) {
+                            Err(err) => {
+                                log::error!("Player {:?}: invalid action: {}", player.id, err);
+                            }
+                            Ok(action) => {
+                                action_sender
+                                    .send(action)
+                                    .await
+                                    .expect("error sending action");
+                            }
+                        }
                     }
-                    Ok(action) => actions.push(action),
+
+                    // Store the memory of the player
+                    player.memory = output.memory;
                 }
-            }
+            },
+        );
 
-            // Store the memory of the player
-            player.memory = output.memory;
+        let gather_actions_fut = action_receiver.collect::<Vec<_>>();
+        let (_, actions) = futures::future::join(player_iter_fut, gather_actions_fut).await;
+        self.world = self.world.apply(actions);
 
-            Some(actions)
-        }
-    }))
-    .await
-    .into_iter()
-    .filter_map(|a| a)
-    .flatten();
-
-    // Run all actions on the world
-    world.apply(actions.into_iter())
+        self
+    }
 }
 
 /// An error that might occur when a user sends an action that is not possible.

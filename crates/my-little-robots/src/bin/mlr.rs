@@ -1,12 +1,11 @@
-use mlr::PlayerId;
 use mlr::RunnerInput;
 use mlr::World;
 use mlr::{application, RunnerError};
 use mlr::{Coord, Direction};
+use mlr::{GameState, PlayerId};
 use mlr::{Player, PlayerAction};
 use mlr::{RunnerOutput, Unit};
 use serde_json::json;
-use std::sync::mpsc::channel;
 
 fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
     let mut rng = rand::thread_rng();
@@ -33,63 +32,63 @@ fn player_run(input: RunnerInput) -> Result<RunnerOutput, RunnerError> {
 fn main() {
     env_logger::init();
 
-    // Create the world
-    let mut world = World::default();
-    let world_clone = world.clone();
+    let mut game_state = GameState {
+        players: vec![
+            Player {
+                id: PlayerId(0),
+                runner: Box::new(player_run),
+                memory: json!({}),
+            },
+            Player {
+                id: PlayerId(1),
+                runner: Box::new(player_run),
+                memory: json!({}),
+            },
+            Player {
+                id: PlayerId(2),
+                runner: Box::new(player_run),
+                memory: json!({}),
+            },
+            Player {
+                id: PlayerId(3),
+                runner: Box::new(player_run),
+                memory: json!({}),
+            },
+        ],
+        world: World::default(),
+        turn: 0,
+    };
 
-    let (sender, reciever) = channel();
+    // Spawn a unit for every player
+    for (i, player) in game_state.players.iter().enumerate() {
+        game_state.world.spawn_unit(
+            player.id,
+            Coord {
+                x: 10 + i as isize * 10,
+                y: 10,
+            },
+        );
+    }
+
+    // Create the world
+    let (sender, receiver) = async_watch::channel(game_state.world.clone());
 
     std::thread::spawn(|| {
         async_std::task::block_on(async move {
-            // Create a player to run
-            let mut players = [
-                Player {
-                    id: PlayerId(0),
-                    runner: Box::new(player_run),
-                    memory: json!({}),
-                },
-                Player {
-                    id: PlayerId(1),
-                    runner: Box::new(player_run),
-                    memory: json!({}),
-                },
-                Player {
-                    id: PlayerId(2),
-                    runner: Box::new(player_run),
-                    memory: json!({}),
-                },
-                Player {
-                    id: PlayerId(3),
-                    runner: Box::new(player_run),
-                    memory: json!({}),
-                },
-            ];
-
-            // Spawn a unit for every player
-            for (i, player) in players.iter().enumerate() {
-                world.spawn_unit(
-                    player.id,
-                    Coord {
-                        x: 10 + i as isize * 10,
-                        y: 10,
-                    },
-                );
-            }
-
             // Run the turn in a loop
             loop {
-                world = mlr::turn(&mut players, world).await;
-                sender
-                    .send(world.clone())
-                    .expect("Could not send updated map");
-                if world.units_on_exits().next().is_some() {
+                game_state = game_state.turn().await;
+                if sender.send(game_state.world.clone()).is_err() {
+                    break; // Sender closed
+                }
+                if game_state.world.units_on_exits().next().is_some() {
                     break;
                 }
-                //async_std::task::sleep(std::time::Duration::from_millis(5)).await;
+                async_std::task::sleep(std::time::Duration::from_micros(100)).await;
             }
         });
     });
 
     // Render our world
-    application::run(world_clone, reciever).expect("Error while rendering");
+    application::run(receiver).expect("Error while rendering");
 }
