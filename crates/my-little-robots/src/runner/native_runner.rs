@@ -41,7 +41,7 @@ impl PlayerRunner for CommandRunner {
         stdin.flush().await?;
 
         let mut lines = (&mut stdout).lines();
-        let timeout = Duration::from_millis(10);
+        let timeout = Duration::from_millis(500);
         let result = async_std::future::timeout(
             timeout,
             (|| async move {
