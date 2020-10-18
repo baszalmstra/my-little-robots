@@ -1,3 +1,4 @@
+mod async_runner;
 mod native_runner;
 mod wasi_runner;
 

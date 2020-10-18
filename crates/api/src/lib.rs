@@ -155,6 +155,9 @@ pub enum RunnerError {
     #[error("internal error")]
     InternalError,
 
+    #[error("the program errored while initializing")]
+    InitError(String),
+
     #[error("the program exited before it returned any data")]
     NoData,
 

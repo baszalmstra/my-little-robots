@@ -1,7 +1,7 @@
+use crate::runner::async_runner::AsyncRunner;
 use crate::PlayerRunner;
 use async_process::{Command, Stdio};
 use async_std::io::{BufReader, BufWriter};
-use futures::{AsyncBufReadExt, AsyncWriteExt, StreamExt};
 use mlr_api::{PlayerInput, PlayerOutput, RunnerError};
 use std::ffi::{OsStr, OsString};
 use std::time::Duration;
@@ -32,35 +32,17 @@ impl PlayerRunner for CommandRunner {
             .stdout(Stdio::piped())
             .spawn()?;
 
-        let mut stdin = BufWriter::new(proc.stdin.take().unwrap());
-        let mut stdout = BufReader::new(proc.stdout.take().unwrap());
+        let stdin = BufWriter::new(proc.stdin.take().unwrap());
+        let stdout = BufReader::new(proc.stdout.take().unwrap());
 
-        let mut input_json = serde_json::to_vec(&input)?;
-        input_json.push(b'\n');
-        stdin.write(&input_json).await?;
-        stdin.flush().await?;
+        // Construct a runner that performs the communication with the process
+        let mut runner = AsyncRunner::new(stdin, stdout);
 
-        let mut lines = (&mut stdout).lines();
+        // Time the process out if it doesnt return a value without a certain time
         let timeout = Duration::from_millis(10);
-        let result = async_std::future::timeout(
-            timeout,
-            (|| async move {
-                loop {
-                    let line = lines
-                        .next()
-                        .await
-                        .ok_or(RunnerError::NoData)?
-                        .map_err(|_| RunnerError::NoData)?;
-                    if let Some(output) = line.strip_prefix("__mlr_output:") {
-                        return Ok(serde_json::from_str::<PlayerOutput>(output)?);
-                    } else {
-                        println!("Player {:?}: {}", input.player_id, line);
-                    }
-                }
-            })(),
-        )
-        .await
-        .map_err(|_| RunnerError::Timeout(timeout))?;
+        let result = async_std::future::timeout(timeout, runner.run(input))
+            .await
+            .map_err(|_| RunnerError::Timeout(timeout))?;
 
         // Kill the process if it doesnt quit in time
         if async_std::future::timeout(Duration::from_millis(1), proc.status())
