@@ -34,30 +34,30 @@ impl PlayerRunner for WasiRunner {
         input_json.push(b'\n');
 
         let output = Arc::new(RwLock::new(Vec::<u8>::new()));
-
         {
             let wasi_ctx = WasiCtxBuilder::new()
                 .stdout(WritePipe::from_shared(output.clone()))
                 .stdin(ReadPipe::from(input_json))
                 .build()
-                .map_err(|_| RunnerError::InternalError)?;
+                .map_err(|e| RunnerError::InitError(format!("error initializing wasi: {:?}", e)))?;
 
             let wasi = Wasi::new(&store, wasi_ctx);
-            wasi.add_to_linker(&mut linker)
-                .map_err(|_| RunnerError::InternalError)?;
+            wasi.add_to_linker(&mut linker).map_err(|e| {
+                RunnerError::InitError(format!("error adding wasi to linker: {}", e))
+            })?;
 
-            let instance = linker
-                .instantiate(&self.module)
-                .map_err(|_| RunnerError::InternalError)?;
-            let default_export = instance
-                .get_func("_start")
-                .ok_or(RunnerError::InternalError)?;
+            let instance = linker.instantiate(&self.module).map_err(|e| {
+                RunnerError::InitError(format!("error instantiating wasm module: {}", e))
+            })?;
+            let default_export = instance.get_func("_start").ok_or_else(|| {
+                RunnerError::InitError(
+                    "could not locate _start function in wasm module".to_string(),
+                )
+            })?;
 
-            // linker.module("", &module).map_err(|_| RunnerError::InternalError)?;
-            // let default_export = linker.get_default("").map_err(|_| RunnerError::InternalError)?;
-            let entrypoint = default_export
-                .get0::<()>()
-                .map_err(|_| RunnerError::InternalError)?;
+            let entrypoint = default_export.get0::<()>().map_err(|e| {
+                RunnerError::InitError(format!("error executing wasm module: {}", e))
+            })?;
             entrypoint().map_err(|e| {
                 eprintln!("err: {}", e);
                 RunnerError::InternalError

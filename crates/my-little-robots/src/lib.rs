@@ -10,10 +10,9 @@ use self::map::Map;
 use crate::map::new_map_prim;
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};
-use mlr_api::{
-    Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerWorld,
-    RunnerError, TileType, Unit, UnitId,
-};
+use mlr_api::{Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerWorld, RunnerError, TileType, Unit, UnitId, PlayerTile};
+use std::collections::HashSet;
+use itertools::Itertools;
 
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
@@ -52,14 +51,28 @@ impl World {
 
     /// Creates a snapshot of the world as seen by the given Player.
     fn player_world(&self, player_id: PlayerId) -> PlayerWorld {
+        let player_units = self
+            .units
+            .iter()
+            .filter(|unit| unit.player == player_id)
+            .cloned()
+            .collect_vec();
+
+        let tiles = player_units
+            .iter()
+            .map(|unit| self.map.field_of_view(unit.location, 7))
+            .flatten()
+            .map(|coord| {
+                PlayerTile {
+                    coord,
+                    tile_type: self.map[coord],
+                }
+            })
+            .collect();
+
         PlayerWorld {
-            units: self
-                .units
-                .iter()
-                .filter(|unit| unit.player == player_id)
-                .cloned()
-                .collect(),
-            tiles: Vec::new(),
+            units: player_units,
+            tiles,
         }
     }
 

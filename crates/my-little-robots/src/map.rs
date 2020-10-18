@@ -120,16 +120,12 @@ fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<Direction> {
     let directions = Direction::all_directions();
     directions
         .into_iter()
-        .filter_map(move |direction| {
-            let mutation = Coord::from(direction);
+        .filter(move |direction| {
+            let mutation = Coord::from(*direction);
             // Neighbor tiles are set with a space of 2 tiles
             // and are exposed within the grid
             let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-            if in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Floor {
-                Some(direction)
-            } else {
-                None
-            }
+            in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Floor
         })
         .collect()
 }
