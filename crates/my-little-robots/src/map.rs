@@ -86,6 +86,18 @@ impl<T: Into<Coord>> IndexMut<T> for Map {
     }
 }
 
+/// Calculate whether these cells can be selected as a frontier or neighbor bound
+/// TODO: change this to be generic, because the cells skip 2 places it depends
+/// on the starting position whether the border gets filled, for now we assume
+/// a staring position in the center and then make the map smaller so that the left
+/// and bottom border are not used
+fn in_frontier_bounds(map: &Map, position: Coord) -> bool {
+    position.x >= 1
+        && position.x < (map.width) as isize
+        && position.y >= 0
+        && position.y < (map.height - 1) as isize
+}
+
 fn get_frontier_tiles(map: &Map, position: Coord) -> Vec<Coord> {
     let directions = Direction::all_directions();
     directions
@@ -95,7 +107,7 @@ fn get_frontier_tiles(map: &Map, position: Coord) -> Vec<Coord> {
             // Frontier tiles are set with a space of 2 tiles
             // and are blocked within the grid
             let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-            if map.in_bounds(new_coord) && map[new_coord] == TileType::Wall {
+            if in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Wall {
                 Some(new_coord)
             } else {
                 None
@@ -110,10 +122,10 @@ fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<Direction> {
         .into_iter()
         .filter_map(move |direction| {
             let mutation = Coord::from(direction);
-            // Frontier tiles are set with a space of 2 tiles
-            // and are blocked within the grid
+            // Neighbor tiles are set with a space of 2 tiles
+            // and are exposed within the grid
             let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-            if map.in_bounds(new_coord) && map[new_coord] == TileType::Floor {
+            if in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Floor {
                 Some(direction)
             } else {
                 None
@@ -153,8 +165,8 @@ pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
         let between_dir = neighbors[rng.gen_range(0, neighbors.len())];
 
         // Create passage in between
-        let mutation = Coord::from(between_dir);
-        let in_between = Coord::new(frontier_cell.x + mutation.x, frontier_cell.y + mutation.y);
+        let in_between = frontier_cell + between_dir;
+        //let in_between = Coord::new(frontier_cell.x + mutation.x, frontier_cell.y + mutation.y);
         map[in_between] = TileType::Floor;
 
         // Append new walls
@@ -166,6 +178,25 @@ pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
             }
         }
     }
+
+    // Test for closing of the sides, this was not very nice
+    // but might be useful in the future
+    // Close off all the sides
+    //let map_width = map.width;
+    //let map_height = map.height;
+    //for x in 0..map_width {
+    //let top = Coord::new(x, 0);
+    //let bot = Coord::new(x, map_height - 1);
+    //map[top] = TileType::Wall;
+    //map[bot] = TileType::Wall;
+    //}
+
+    //for y in 0..map_height {
+    //let left = Coord::new(0, y);
+    //let right = Coord::new(map_width - 1, y);
+    //map[left] = TileType::Wall;
+    //map[right] = TileType::Wall;
+    //}
 
     // Set a random exit for now
     if let Some((tile_idx, _)) = map
