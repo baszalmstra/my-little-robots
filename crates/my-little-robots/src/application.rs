@@ -51,13 +51,14 @@ fn unit_glyph(unit: &Unit) -> FontCharType {
 }
 
 fn is_revealed_and_wall(map: &Map, x: isize, y: isize) -> bool {
-    map[(x, y)] == TileType::Wall
+    x < 0
+        || y < 0
+        || x >= map.width as isize
+        || y >= map.height as isize
+        || map[(x, y)] == TileType::Wall
 }
 
 fn wall_glyph(map: &Map, x: isize, y: isize) -> FontCharType {
-    if x < 1 || x > map.width as isize - 2 || y < 1 || y > map.height as isize - 2 {
-        return 35;
-    }
     let mut mask: u8 = 0;
 
     if is_revealed_and_wall(map, x, y - 1) {
