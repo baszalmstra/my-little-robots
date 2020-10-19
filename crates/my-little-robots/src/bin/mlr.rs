@@ -93,7 +93,7 @@ fn try_main() -> anyhow::Result<()> {
                         if game_state.world.units_on_exits().next().is_some() {
                             break;
                         }
-                        // async_std::task::sleep(std::time::Duration::from_millis(10)).await;
+                        async_std::task::sleep(std::time::Duration::from_millis(10)).await;
                     }
                 });
             });

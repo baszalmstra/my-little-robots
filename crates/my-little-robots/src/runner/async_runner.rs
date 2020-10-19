@@ -1,6 +1,5 @@
 use crate::PlayerRunner;
-use futures::stream::StreamExt;
-use futures::{AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
+use futures::{stream::StreamExt, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 use mlr_api::{PlayerInput, PlayerMemory, PlayerOutput, RunnerError};
 
 pub struct AsyncRunner<W: AsyncWrite, R: AsyncBufRead> {

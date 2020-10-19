@@ -1,10 +1,11 @@
-use crate::runner::async_runner::AsyncRunner;
-use crate::PlayerRunner;
+use crate::{runner::async_runner::AsyncRunner, PlayerRunner};
 use async_process::{Command, Stdio};
 use async_std::io::{BufReader, BufWriter};
 use mlr_api::{PlayerInput, PlayerOutput, RunnerError};
-use std::ffi::{OsStr, OsString};
-use std::time::Duration;
+use std::{
+    ffi::{OsStr, OsString},
+    time::Duration,
+};
 
 pub struct CommandRunner {
     command: OsString,

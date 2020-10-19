@@ -15,7 +15,6 @@ use mlr_api::{
     Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerTile,
     PlayerWorld, RunnerError, TileType, Unit, UnitId,
 };
-use std::collections::HashSet;
 
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
@@ -27,8 +26,8 @@ pub struct World {
 impl Default for World {
     fn default() -> World {
         World {
-            map: new_map_test(80, 50),
-            //map: new_map_prim(80, 50),
+            //map: new_map_test(80, 50),
+            map: new_map_prim(80, 50),
             units: Vec::new(),
         }
     }
