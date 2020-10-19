@@ -17,6 +17,7 @@ impl std::fmt::Debug for PlayerId {
 
 /// A coordinate in the world
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(from = "(isize, isize)", into = "(isize, isize)")]
 pub struct Coord {
     pub x: isize,
     pub y: isize,
@@ -32,10 +33,16 @@ impl Coord {
     }
 }
 
-// Conversion from a tuple
+// Conversion from a tuple and back
 impl<T: TryInto<isize>> From<(T, T)> for Coord {
     fn from(tup: (T, T)) -> Self {
         Coord::new(tup.0, tup.1)
+    }
+}
+
+impl<T: From<isize>> From<Coord> for (T, T) {
+    fn from(coord: Coord) -> Self {
+        (coord.x.into(), coord.y.into())
     }
 }
 
@@ -61,6 +68,7 @@ pub struct PlayerWorld {
 
 /// The type for a single tile in the world
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TileType {
     Wall,
     Floor,
@@ -78,17 +86,20 @@ impl TileType {
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
 pub struct PlayerTile {
     pub coord: Coord,
+    #[serde(rename = "type")]
     pub tile_type: TileType,
 }
 
 /// Describes a possible action that can be performed in the world as ordered by a specific player.
 #[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
+#[serde(tag = "action", rename_all = "snake_case")]
 pub enum PlayerAction {
-    Move(UnitId, Direction),
+    Move { unit: UnitId, direction: Direction },
 }
 
 /// A direction
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Direction {
     Left,
     Right,

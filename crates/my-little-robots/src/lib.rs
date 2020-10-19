@@ -7,12 +7,15 @@ use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
 
 use self::map::Map;
-use crate::map::new_map_prim;
+use crate::map::{new_map_prim, new_map_test};
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};
-use mlr_api::{Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerWorld, RunnerError, TileType, Unit, UnitId, PlayerTile};
-use std::collections::HashSet;
 use itertools::Itertools;
+use mlr_api::{
+    Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerTile,
+    PlayerWorld, RunnerError, TileType, Unit, UnitId,
+};
+use std::collections::HashSet;
 
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
@@ -24,8 +27,8 @@ pub struct World {
 impl Default for World {
     fn default() -> World {
         World {
-            //map: new_map_test(80, 50),
-            map: new_map_prim(80, 50),
+            map: new_map_test(80, 50),
+            //map: new_map_prim(80, 50),
             units: Vec::new(),
         }
     }
@@ -62,11 +65,9 @@ impl World {
             .iter()
             .map(|unit| self.map.field_of_view(unit.location, 7))
             .flatten()
-            .map(|coord| {
-                PlayerTile {
-                    coord,
-                    tile_type: self.map[coord],
-                }
+            .map(|coord| PlayerTile {
+                coord,
+                tile_type: self.map[coord],
             })
             .collect();
 
@@ -213,7 +214,7 @@ fn validate_action(
     world: &World,
 ) -> Result<Action, ActionValidationError> {
     match action {
-        PlayerAction::Move(unit, direction) => {
+        PlayerAction::Move { unit, direction } => {
             if world.units[unit.0].player != player {
                 Err(ActionValidationError::InvalidAction(
                     "action points to invalid unit".to_string(),

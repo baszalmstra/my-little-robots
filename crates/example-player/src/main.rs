@@ -1,4 +1,4 @@
-use mlr_api::{Direction, PlayerAction, PlayerInput, PlayerOutput, Unit, UnitId, Coord, TileType};
+use mlr_api::{Coord, Direction, PlayerAction, PlayerInput, PlayerOutput, TileType, Unit, UnitId};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -81,7 +81,10 @@ fn tick(input: PlayerInput<Memory>) -> PlayerOutput<Memory> {
         memory.directions.insert(unit.id, direction);
 
         // Perform the move
-        actions.push(PlayerAction::Move(unit.id, direction));
+        actions.push(PlayerAction::Move {
+            unit: unit.id,
+            direction,
+        });
     }
 
     PlayerOutput { actions, memory }
