@@ -39,7 +39,7 @@ impl PlayerRunner for CommandRunner {
         let mut runner = AsyncRunner::new(stdin, stdout);
 
         // Time the process out if it doesnt return a value without a certain time
-        let timeout = Duration::from_millis(10);
+        let timeout = Duration::from_millis(500);
         let result = async_std::future::timeout(timeout, runner.run(input))
             .await
             .map_err(|_| RunnerError::Timeout(timeout))?;
