@@ -162,7 +162,6 @@ pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
 
         // Create passage in between
         let in_between = frontier_cell + between_dir;
-        //let in_between = Coord::new(frontier_cell.x + mutation.x, frontier_cell.y + mutation.y);
         map[in_between] = TileType::Floor;
 
         // Append new walls
