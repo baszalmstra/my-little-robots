@@ -1,2 +1,2 @@
 [workspace]
-members = ["crates/*"]
+members = ["api", "example-player", "my-little-robots"]
