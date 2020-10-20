@@ -17,7 +17,7 @@ use std::{
     time::Duration,
 };
 use wasi_common::virtfs::pipe::{ReadPipe, WritePipe};
-use wasmtime::{Config, Engine, InterruptHandle, Linker, Module, Store};
+use wasmtime::{Config, Engine, InterruptHandle, Linker, Module, OptLevel, Store};
 use wasmtime_wasi::{Wasi, WasiCtxBuilder};
 
 pub struct WasiRunner {
@@ -28,7 +28,10 @@ pub struct WasiRunner {
 impl WasiRunner {
     pub fn new(path_to_module: PathBuf) -> anyhow::Result<Self> {
         let mut config = Config::default();
-        config.interruptable(true).cache_config_load_default()?;
+        config
+            .interruptable(true)
+            .cache_config_load_default()?
+            .cranelift_opt_level(OptLevel::Speed);
 
         let engine = Engine::new(&config);
         let module = Module::from_file(&engine, &path_to_module)?;
