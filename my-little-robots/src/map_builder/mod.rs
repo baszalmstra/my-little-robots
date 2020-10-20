@@ -1,12 +1,15 @@
 use super::Map;
 
+mod cellular_automata;
 mod prim;
 mod snapshot;
 
 use mlr_api::{Coord, Direction, TileType};
-pub use prim::PrimMazeBuilder;
 use rand::Rng;
 pub use snapshot::{MapWithSnapshots, SnapshotableMap};
+
+pub use cellular_automata::CellularAutomata;
+pub use prim::PrimMazeBuilder;
 
 pub fn new_map<B: MapBuilder>(width: usize, height: usize, builder: &mut B) -> Map {
     let mut map = Map::new_closed(width, height);

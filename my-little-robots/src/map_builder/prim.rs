@@ -1,5 +1,4 @@
-use super::{Coord, Direction, Map, MapBuilder, TileType};
-use crate::map_builder::SnapshotableMap;
+use super::{Coord, Direction, Map, MapBuilder, SnapshotableMap, TileType};
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use std::collections::HashSet;

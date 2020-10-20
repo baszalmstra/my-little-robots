@@ -58,7 +58,7 @@ fn wall_glyph(map: &Map, x: isize, y: isize) -> FontCharType {
     }
 
     match mask {
-        0 => 9,    // Pillar because we can't see neighbors
+        0 => 10,   // Pillar because we can't see neighbors
         1 => 186,  // Wall only to the north
         2 => 186,  // Wall only to the south
         3 => 186,  // Wall to the north and south
