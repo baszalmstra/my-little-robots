@@ -1,10 +1,11 @@
+mod application;
+
 use anyhow::Context;
 use anyhow::{anyhow, bail};
 use itertools::Itertools;
-use mlr::application;
-use mlr::runner::Runner;
 use mlr::GameState;
 use mlr::Player;
+use mlr::Runner;
 use mlr::World;
 use mlr_api::{Coord, PlayerId};
 use serde_json::json;

@@ -1,24 +1,7 @@
-use crate::map::Map;
-use crate::Unit;
-use crate::World;
+use crate::{Map, World};
 use bracket_lib::prelude::*;
-use mlr_api::{Coord, PlayerId, TileType};
+use mlr_api::{Coord, PlayerId, TileType, Unit};
 use std::collections::HashSet;
-
-struct ApplicationState {
-    world_receiver: async_watch::Receiver<World>,
-}
-
-impl GameState for ApplicationState {
-    fn tick(&mut self, ctx: &mut BTerm) {
-        // Try to receive a new world
-        let world = self.world_receiver.borrow();
-
-        // Draw the world
-        ctx.cls();
-        draw_world(&world, ctx);
-    }
-}
 
 /// Returns the correct glyph for the TileType
 fn glyph_for(coord: Coord, map: &Map) -> (impl Into<RGBA>, FontCharType) {
@@ -97,9 +80,6 @@ fn wall_glyph(map: &Map, x: isize, y: isize) -> FontCharType {
 
 /// Draw the actual world
 pub fn draw_world(world: &World, ctx: &mut BTerm) {
-    let height = world.map.height as isize;
-    let width = world.map.width as isize;
-
     let visible_tiles: HashSet<Coord> = world
         .units
         .iter()
@@ -107,22 +87,10 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
         .flatten()
         .collect();
 
-    // Draw map
-    for y in 0..height {
-        for x in 0..width {
-            let pos: Coord = (x, y).into();
+    let is_visible = |coord: Coord| visible_tiles.contains(&coord);
 
-            let (color, glyph) = glyph_for((x, y).into(), &world.map);
-            let color = if !visible_tiles.contains(&pos) {
-                let mut color = color.into();
-                color.a = 0.2;
-                color
-            } else {
-                color.into()
-            };
-            ctx.set(x, y, color, BLACK, glyph);
-        }
-    }
+    // Draw map
+    draw_map(&world.map, is_visible, ctx);
 
     // Draw units
     world.units.iter().for_each(|unit| {
@@ -136,12 +104,24 @@ pub fn draw_world(world: &World, ctx: &mut BTerm) {
     })
 }
 
-pub fn run(world_receiver: async_watch::Receiver<World>) -> BError {
-    let context = BTermBuilder::simple80x50()
-        .with_title("My Little Robots")
-        .build()?;
-    let application_state = ApplicationState { world_receiver };
+/// Draws the specified map
+pub fn draw_map<F: Fn(Coord) -> bool>(map: &Map, is_visible: F, ctx: &mut BTerm) {
+    let height = map.height as isize;
+    let width = map.width as isize;
 
-    // Run the main loop
-    main_loop(context, application_state)
+    for y in 0..height {
+        for x in 0..width {
+            let pos: Coord = (x, y).into();
+
+            let (color, glyph) = glyph_for((x, y).into(), map);
+            let color = if !is_visible(pos) {
+                let mut color = color.into();
+                color.a = 0.2;
+                color
+            } else {
+                color.into()
+            };
+            ctx.set(x, y, color, BLACK, glyph);
+        }
+    }
 }
