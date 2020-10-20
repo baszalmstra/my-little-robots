@@ -1,5 +1,6 @@
 use mlr_api::{Coord, Direction, PlayerAction, PlayerInput, PlayerOutput, TileType, Unit, UnitId};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Memory {

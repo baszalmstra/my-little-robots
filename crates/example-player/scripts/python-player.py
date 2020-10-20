@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 import sys
 import json
-from typing import List, Any
+from typing import List, Any, Callable
 from enum import Enum
 
 
 class TileType(Enum):
+    """The type that a tile can be"""
     WALL = "wall"
     FLOOR = "floor"
     EXIT = "exit"
@@ -21,6 +22,25 @@ class TileType(Enum):
             return TileType.EXIT
         else:
             return TileType.WALL
+
+class Direction(Enum):
+    """The directions that a bot can move"""
+    LEFT = "left"
+    RIGHT = "right"
+    UP = "up"
+    DOWN = "down"
+
+class PlayerAction:
+    """The action that a player can take"""
+    def __init__(self, unit_id: int, dir: Direction):
+        self.unit_id = unit_id
+        self.direction = dir
+
+class PlayerOutput:
+    """The output that has to be sent back"""
+    def __init__(self, actions: List[PlayerAction], memory: Any = None):
+        self.actions = actions
+        self.memory = memory if memory else {}
 
 
 class Coord:
@@ -39,6 +59,8 @@ class Coord:
 
 
 class Tile:
+    """A tile in the map"""
+
     def __init__(self, tile_type: TileType, coord: Coord):
         self.tile_type = tile_type
         self.coord = coord
@@ -70,7 +92,7 @@ class Unit:
 class PlayerWorld:
     """The entire world that the player knows"""
 
-    def __init__(self, units: List[Unit], tiles: List[TileType]):
+    def __init__(self, units: List[Unit], tiles: List[Tile]):
         self.units = units
         self.tiles = tiles
 
@@ -92,7 +114,7 @@ class PlayerInput:
     """The input that the player receives"""
 
     def __init__(
-        self, player_id: int, turn: int, player_world: PlayerWorld, memory: Any
+            self, player_id: int, turn: int, player_world: PlayerWorld, memory: Any
     ):
         self.player_id = player_id
         self.turn = turn
@@ -112,7 +134,7 @@ class PlayerInput:
         )
 
 
-def tick(data: PlayerInput):
+def turn(data: PlayerInput):
     """Do the processing here"""
     print(data)
 
@@ -122,14 +144,22 @@ def from_json(json: Any) -> PlayerInput:
     return PlayerInput.from_json(json)
 
 
-def main():
-    # Read json from stdin
+def read_stdin_and_do_turn(turn_function: Callable[[PlayerInput], None]):
+    """
+    Read from stdin and call the turn function
+    :param turn_function: The function that does the actual player turn
+    """
     for line in sys.stdin:
-        # Process json
-        loaded = json.loads(line)
-        print(loaded)
-        tick(from_json(loaded))
+        # Convert to json
+        player_input = from_json(json.loads(line))
+        # Call the supplied function
+        turn_function(player_input)
         break
+
+
+def main():
+    # Do a player turn using our turn function
+    read_stdin_and_do_turn(turn_function=turn)
 
 
 if __name__ == "__main__":
