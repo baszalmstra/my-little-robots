@@ -17,7 +17,7 @@ use std::{
     time::Duration,
 };
 use wasi_common::virtfs::pipe::{ReadPipe, WritePipe};
-use wasmtime::{Config, Engine, InterruptHandle, Linker, Module, Store};
+use wasmtime::{Config, Engine, InterruptHandle, Linker, Module, OptLevel, Store};
 use wasmtime_wasi::{Wasi, WasiCtxBuilder};
 
 pub struct WasiRunner {
@@ -28,7 +28,11 @@ pub struct WasiRunner {
 impl WasiRunner {
     pub fn new(path_to_module: PathBuf) -> anyhow::Result<Self> {
         let mut config = Config::default();
-        config.interruptable(true);
+        config
+            .interruptable(true)
+            .cache_config_load_default()?
+            .cranelift_opt_level(OptLevel::Speed);
+
         let engine = Engine::new(&config);
         let module = Module::from_file(&engine, &path_to_module)?;
         Ok(WasiRunner { engine, module })
@@ -87,9 +91,6 @@ impl WasiRunner {
             let interrupt_handle = store.interrupt_handle().map_err(|e| {
                 RunnerError::InitError(format!("unable to create interrupt handle: {}", e))
             })?;
-            tx.send(interrupt_handle).map_err(|_| {
-                RunnerError::InitError("unable to send interrupt back to main thread".to_string())
-            })?;
 
             let wasi_ctx = WasiCtxBuilder::new()
                 .stdout(WritePipe::new(stdout))
@@ -115,6 +116,12 @@ impl WasiRunner {
             let entrypoint = default_export.get0::<()>().map_err(|e| {
                 RunnerError::InitError(format!("error executing wasm module: {}", e))
             })?;
+
+            // Send the interrupt handle back right before we call the function
+            tx.send(interrupt_handle).map_err(|_| {
+                RunnerError::InitError("unable to send interrupt back to main thread".to_string())
+            })?;
+
             entrypoint().map_err(|e| {
                 eprintln!("err: {}", e);
                 RunnerError::InternalError
