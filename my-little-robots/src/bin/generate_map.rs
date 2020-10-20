@@ -16,7 +16,8 @@ fn try_main() -> BError {
         .build()?;
 
     //let mut builder = mlr::map_builder::SimpleMapBuilder;
-    let mut builder = mlr::map_builder::PrimMazeBuilder;
+    //let mut builder = mlr::map_builder::PrimMazeBuilder;
+    let mut builder = mlr::map_builder::CellularAutomata;
 
     let map_history = new_map_with_history(80, 50, &mut builder);
 

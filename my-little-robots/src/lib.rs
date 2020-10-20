@@ -27,8 +27,9 @@ pub struct World {
 impl Default for World {
     fn default() -> World {
         World {
-            //map: new_map_test(80, 50),
+            //map: map_builder::new_map(80, 50, &mut map_builder::SimpleMapBuilder),
             map: map_builder::new_map(80, 50, &mut map_builder::PrimMazeBuilder),
+            //map: map_builder::new_map(80, 50, &mut map_builder::CellularAutomata),
             units: Vec::new(),
         }
     }
