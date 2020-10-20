@@ -91,9 +91,6 @@ impl WasiRunner {
             let interrupt_handle = store.interrupt_handle().map_err(|e| {
                 RunnerError::InitError(format!("unable to create interrupt handle: {}", e))
             })?;
-            tx.send(interrupt_handle).map_err(|_| {
-                RunnerError::InitError("unable to send interrupt back to main thread".to_string())
-            })?;
 
             let wasi_ctx = WasiCtxBuilder::new()
                 .stdout(WritePipe::new(stdout))
@@ -119,6 +116,12 @@ impl WasiRunner {
             let entrypoint = default_export.get0::<()>().map_err(|e| {
                 RunnerError::InitError(format!("error executing wasm module: {}", e))
             })?;
+
+            // Send the interrupt handle back right before we call the function
+            tx.send(interrupt_handle).map_err(|_| {
+                RunnerError::InitError("unable to send interrupt back to main thread".to_string())
+            })?;
+
             entrypoint().map_err(|e| {
                 eprintln!("err: {}", e);
                 RunnerError::InternalError
