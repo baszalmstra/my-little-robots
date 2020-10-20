@@ -1,13 +1,14 @@
-pub mod application;
-pub mod map;
-pub mod runner;
+pub mod bracket_lib;
+mod map;
+pub mod map_builder;
+mod runner;
 
 use async_trait::async_trait;
 use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
 
-use self::map::Map;
-use crate::map::{new_map_prim, new_map_test};
+pub use self::{map::Map, runner::Runner};
+
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};
 use itertools::Itertools;
@@ -19,15 +20,15 @@ use mlr_api::{
 /// A `World` defines the state of the world.
 #[derive(Clone, Eq, Debug, PartialEq, Hash, Serialize, Deserialize)]
 pub struct World {
-    map: Map,
-    units: Vec<Unit>,
+    pub map: Map,
+    pub units: Vec<Unit>,
 }
 
 impl Default for World {
     fn default() -> World {
         World {
             //map: new_map_test(80, 50),
-            map: new_map_prim(80, 50),
+            map: map_builder::new_map(80, 50, &mut map_builder::PrimMazeBuilder),
             units: Vec::new(),
         }
     }

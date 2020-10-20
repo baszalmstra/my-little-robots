@@ -133,7 +133,7 @@ impl WasiRunner {
         // Wait for the interrupt to be sent back
         let interrupt = rx
             .await
-            .map_err(|_| RunnerError::InitError(format!("no interrupt handle was send")))?;
+            .map_err(|_| RunnerError::InitError("no interrupt handle was send".to_string()))?;
         Ok((interrupt, handle))
     }
 }
@@ -194,7 +194,9 @@ impl AsyncWrite for HostWasiStdin {
     }
 
     fn poll_close(mut self: Pin<&mut Self>, _cx: &mut Context) -> Poll<io::Result<()>> {
-        self.inner.take().map(drop);
+        if let Some(a) = self.inner.take() {
+            drop(a)
+        };
         Poll::Ready(Ok(()))
     }
 }

@@ -1,17 +1,15 @@
 use super::Coord;
 use bracket_lib::prelude::{field_of_view_set, Algorithm2D, BaseMap, Point};
-use mlr_api::{Direction, TileType};
-use rand::prelude::IteratorRandom;
-use rand::Rng;
+use mlr_api::TileType;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub(crate) struct Map {
+pub struct Map {
     pub width: usize,
     pub height: usize,
-    tiles: Vec<TileType>,
+    pub(crate) tiles: Vec<TileType>,
 }
 
 impl BaseMap for Map {
@@ -84,178 +82,4 @@ impl<T: Into<Coord>> IndexMut<T> for Map {
         let index = coord.x as usize + coord.y as usize * self.width;
         &mut self.tiles[index]
     }
-}
-
-/// Calculate whether these cells can be selected as a frontier or neighbor bound
-/// TODO: change this to be generic, because the cells skip 2 places it depends
-/// on the starting position whether the border gets filled, for now we assume
-/// a staring position in the center and then make the map smaller so that the left
-/// and bottom border are not used
-fn in_frontier_bounds(map: &Map, position: Coord) -> bool {
-    position.x >= 1
-        && position.x < (map.width) as isize
-        && position.y >= 0
-        && position.y < (map.height - 1) as isize
-}
-
-fn get_frontier_tiles(map: &Map, position: Coord) -> Vec<Coord> {
-    let directions = Direction::all_directions();
-    directions
-        .into_iter()
-        .filter_map(move |direction| {
-            let mutation = Coord::from(direction);
-            // Frontier tiles are set with a space of 2 tiles
-            // and are blocked within the grid
-            let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-            if in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Wall {
-                Some(new_coord)
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
-fn get_neighbor_tiles(map: &Map, position: Coord) -> Vec<Direction> {
-    let directions = Direction::all_directions();
-    directions
-        .into_iter()
-        .filter(move |direction| {
-            let mutation = Coord::from(*direction);
-            // Neighbor tiles are set with a space of 2 tiles
-            // and are exposed within the grid
-            let new_coord = Coord::new(position.x + mutation.x * 2, position.y + mutation.y * 2);
-            in_frontier_bounds(map, new_coord) && map[new_coord] == TileType::Floor
-        })
-        .collect()
-}
-
-/// A Grid consists of a 2 dimensional array of cells.
-/// A Cell has 2 states: Blocked or Passage.
-/// Start with a Grid full of Cells in state Blocked.
-/// Pick a random Cell, set it to state Passage and Compute its frontier cells. A frontier cell of a Cell is a cell with distance 2 in state Blocked and within the grid.
-/// While the list of frontier cells is not empty:
-///     Pick a random frontier cell from the list of frontier cells.
-///     Let neighbors(frontierCell) = All cells in distance 2 in state Passage. Pick a random neighbor and connect the frontier cell with the neighbor by setting the cell in-between to state Passage. Compute the frontier cells of the chosen frontier cell and add them to the frontier list. Remove the chosen frontier cell from the list of frontier cells.
-pub(crate) fn new_map_prim(width: usize, height: usize) -> Map {
-    let mut map = Map::new_closed(width, height);
-    let mut rng = rand::thread_rng();
-
-    let start = Coord::new(width as isize / 2, height as isize / 2);
-
-    let mut visited = HashSet::new();
-    visited.insert(start);
-    map[start] = TileType::Floor;
-
-    // Get walls around the start position
-    let mut frontier_cells = get_frontier_tiles(&map, start);
-
-    while !frontier_cells.is_empty() {
-        // Select random frontier cell
-        let index = rng.gen_range(0, frontier_cells.len());
-        let frontier_cell = frontier_cells.remove(index);
-        map[frontier_cell] = TileType::Floor;
-
-        // Select neighbors
-        let neighbors = get_neighbor_tiles(&map, frontier_cell);
-        let between_dir = neighbors[rng.gen_range(0, neighbors.len())];
-
-        // Create passage in between
-        let in_between = frontier_cell + between_dir;
-        map[in_between] = TileType::Floor;
-
-        // Append new walls
-        let new_frontier = get_frontier_tiles(&map, frontier_cell);
-        for new_frontier_cell in new_frontier {
-            if !visited.contains(&new_frontier_cell) {
-                frontier_cells.push(new_frontier_cell);
-                visited.insert(new_frontier_cell);
-            }
-        }
-    }
-
-    // Test for closing of the sides, this was not very nice
-    // but might be useful in the future
-    // Close off all the sides
-    //let map_width = map.width;
-    //let map_height = map.height;
-    //for x in 0..map_width {
-    //let top = Coord::new(x, 0);
-    //let bot = Coord::new(x, map_height - 1);
-    //map[top] = TileType::Wall;
-    //map[bot] = TileType::Wall;
-    //}
-
-    //for y in 0..map_height {
-    //let left = Coord::new(0, y);
-    //let right = Coord::new(map_width - 1, y);
-    //map[left] = TileType::Wall;
-    //map[right] = TileType::Wall;
-    //}
-
-    // Set a random exit for now
-    if let Some((tile_idx, _)) = map
-        .tiles
-        .iter()
-        .enumerate()
-        .filter(|t| *t.1 == TileType::Floor)
-        .choose(&mut rng)
-    {
-        map.tiles[tile_idx] = TileType::Exit;
-    }
-
-    map
-}
-
-/// Makes a map with solid boundaries and 400 randomly placed walls. No guarantees that it won't
-/// look awful.
-pub(crate) fn new_map_test(width: usize, height: usize) -> Map {
-    let mut map = Map::new(width, height);
-
-    // Make the boundary walls
-    for x in 0..width {
-        map[(x, 0)] = TileType::Wall;
-        map[(x, height - 1)] = TileType::Wall;
-    }
-
-    for y in 0..height {
-        map[(0, y)] = TileType::Wall;
-        map[(width - 1, y)] = TileType::Wall;
-    }
-
-    // Sample a random direction for the exit
-    let mut rng = rand::thread_rng();
-    let exit_direction = Direction::random(&mut rng);
-    let exit_size = 10;
-    let (mut start, dir): (Coord, Direction) = match exit_direction {
-        Direction::Left => (
-            (0, rng.gen_range(0, height - exit_size)).into(),
-            Direction::Down,
-        ),
-        Direction::Right => (
-            (width - 1, rng.gen_range(0, height - exit_size)).into(),
-            Direction::Down,
-        ),
-        Direction::Up => (
-            (rng.gen_range(0, width - exit_size), 0).into(),
-            Direction::Right,
-        ),
-        Direction::Down => (
-            (rng.gen_range(0, width - exit_size), height - 1).into(),
-            Direction::Right,
-        ),
-    };
-    for _i in 0..exit_size {
-        map[start] = TileType::Exit;
-        start += dir;
-    }
-
-    // Spawn random obstacles
-    for _i in 0..400 {
-        let x = rng.gen_range(1, width - 2);
-        let y = rng.gen_range(1, height - 2);
-        map[(x, y)] = TileType::Wall;
-    }
-
-    map
 }
