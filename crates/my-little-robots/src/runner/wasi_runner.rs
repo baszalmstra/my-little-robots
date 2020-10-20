@@ -28,7 +28,8 @@ pub struct WasiRunner {
 impl WasiRunner {
     pub fn new(path_to_module: PathBuf) -> anyhow::Result<Self> {
         let mut config = Config::default();
-        config.interruptable(true);
+        config.interruptable(true).cache_config_load_default()?;
+
         let engine = Engine::new(&config);
         let module = Module::from_file(&engine, &path_to_module)?;
         Ok(WasiRunner { engine, module })
