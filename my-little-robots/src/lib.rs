@@ -22,6 +22,7 @@ use mlr_api::{
 pub struct World {
     pub map: Map,
     pub units: Vec<Unit>,
+    pub turn: usize,
 }
 
 impl Default for World {
@@ -31,6 +32,7 @@ impl Default for World {
             map: map_builder::new_map(80, 50, &mut map_builder::PrimMazeBuilder),
             //map: map_builder::new_map(80, 50, &mut map_builder::CellularAutomata),
             units: Vec::new(),
+            turn: 0,
         }
     }
 }
@@ -137,14 +139,13 @@ pub struct Player {
 pub struct GameState {
     pub players: Vec<Player>,
     pub world: World,
-    pub turn: usize,
 }
 
 impl GameState {
     pub async fn turn(mut self) -> Self {
         let (action_sender, action_receiver) = unbounded();
         let world_ref = &self.world;
-        let turn = self.turn;
+        let turn = self.world.turn;
         let player_iter_fut = futures::stream::iter(self.players.iter_mut()).for_each_concurrent(
             None,
             move |player| {
@@ -194,7 +195,7 @@ impl GameState {
         let gather_actions_fut = action_receiver.collect::<Vec<_>>();
         let (_, actions) = futures::future::join(player_iter_fut, gather_actions_fut).await;
         self.world = self.world.apply(actions);
-        self.turn += 1;
+        self.world.turn += 1;
 
         self
     }

@@ -70,7 +70,6 @@ fn try_main() -> anyhow::Result<()> {
             let mut game_state = GameState {
                 players,
                 world: World::default(),
-                turn: 0,
             };
 
             // Spawn a unit for every player
