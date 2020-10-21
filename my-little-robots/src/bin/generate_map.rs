@@ -49,6 +49,6 @@ impl GameState for ApplicationState {
 
         // Draw the world
         ctx.cls();
-        draw_map(&self.map_history[self.index], |_| true, ctx);
+        draw_map(&self.map_history[self.index], |_| 1.0, ctx);
     }
 }
