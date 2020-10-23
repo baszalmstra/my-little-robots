@@ -1,6 +1,8 @@
 use crate::Map;
+use crate::World;
 use bracket_lib::prelude::*;
-use mlr_api::{Coord, PlayerId, TileType, Unit};
+use mlr_api::{Coord, PlayerId, TileType, Unit, UnitId};
+use std::collections::{HashMap, HashSet};
 
 /// Returns the correct glyph for the TileType
 pub fn glyph_for(coord: Coord, map: &Map) -> (impl Into<RGBA>, FontCharType) {
@@ -22,14 +24,22 @@ pub fn player_color(player: PlayerId) -> impl Into<RGBA> {
     }
 }
 
-pub fn unit_glyph(unit: &Unit) -> FontCharType {
-    match unit.player.0 {
-        0 => to_cp437('♦'),
-        1 => to_cp437('♣'),
-        2 => to_cp437('¶'),
-        3 => to_cp437('♣'),
-        _ => to_cp437('♥'),
+fn player_symbol(player: PlayerId) -> char {
+    match player.0 {
+        0 => '♦',
+        1 => '♣',
+        2 => '¶',
+        3 => '♣',
+        _ => '♥',
     }
+}
+
+pub fn player_glyph(player: PlayerId) -> FontCharType {
+    to_cp437(player_symbol(player))
+}
+
+pub fn unit_glyph(unit: &Unit) -> FontCharType {
+    player_glyph(unit.player)
 }
 
 pub fn is_revealed_and_wall(map: &Map, x: isize, y: isize) -> bool {
@@ -92,4 +102,27 @@ pub fn draw_map<F: Fn(Coord) -> f32>(map: &Map, is_visible: F, ctx: &mut BTerm) 
             ctx.set(x, y, color, BLACK, glyph);
         }
     }
+}
+
+/// Draw the UI
+pub fn draw_ui(world: &World, _units: &HashMap<UnitId, Coord>, ctx: &mut BTerm) {
+    let map = &world.map;
+    let mut ui_string = format!("Turn {}", world.turn);
+
+    // TODO: change this to not happen each frame
+    // Get unique players and sort them
+    let mut players = HashSet::new();
+    world.units.iter().for_each(|u| {
+        players.insert(u.player);
+    });
+    let mut player_vector = Vec::with_capacity(players.len());
+    for player in players.iter() {
+        player_vector.push(player);
+    }
+    player_vector.sort_by(|a, b| a.0.cmp(&b.0));
+
+    ui_string += &player_vector.iter().fold(String::new(), |acc, p| {
+        acc + &format!(" Player {}: {}", p.0, player_symbol(**p))
+    });
+    ctx.print_centered(map.height - 1, ui_string);
 }

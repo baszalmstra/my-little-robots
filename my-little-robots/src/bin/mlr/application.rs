@@ -1,5 +1,5 @@
 use bracket_lib::prelude::*;
-use mlr::bracket_lib::{draw_map, player_color, unit_glyph};
+use mlr::bracket_lib::{draw_map, draw_ui, player_color, unit_glyph};
 use mlr::World;
 use mlr_api::{Coord, UnitId};
 use std::collections::{HashMap, HashSet};
@@ -108,6 +108,8 @@ impl GameState for ApplicationState {
                 unit_glyph(unit),
             )
         }
+
+        draw_ui(&self.world.world, &self.world.unit_locations, ctx);
 
         let frame_animation_time = 100.0;
         self.animation_time =
