@@ -1,2 +1,2 @@
 [workspace]
-members = ["api", "example-player", "my-little-robots"]
+members = ["api", "example-player", "my-little-robots", "backend"]
