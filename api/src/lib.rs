@@ -197,6 +197,7 @@ impl From<std::io::Error> for RunnerError {
 /// The input for a `PlayerRunner`
 #[derive(Serialize, Deserialize)]
 pub struct PlayerInput<T: Debug = PlayerMemory> {
+    pub version: usize,
     pub player_id: PlayerId,
     pub turn: usize,
     pub world: PlayerWorld,
@@ -209,3 +210,5 @@ pub struct PlayerOutput<T: Debug = PlayerMemory> {
     pub actions: Vec<PlayerAction>,
     pub memory: T,
 }
+
+pub const API_VERSION: usize = 1;

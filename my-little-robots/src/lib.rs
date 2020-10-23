@@ -14,7 +14,7 @@ use futures::{SinkExt, StreamExt};
 use itertools::Itertools;
 use mlr_api::{
     Coord, Direction, PlayerAction, PlayerId, PlayerInput, PlayerMemory, PlayerOutput, PlayerTile,
-    PlayerWorld, RunnerError, TileType, Unit, UnitId,
+    PlayerWorld, RunnerError, TileType, Unit, UnitId, API_VERSION,
 };
 
 /// A `World` defines the state of the world.
@@ -153,6 +153,7 @@ impl GameState {
                 async move {
                     // Construct the input for the player
                     let player_input = PlayerInput {
+                        version: API_VERSION,
                         player_id: player.id,
                         turn,
                         world: world_ref.player_world(player.id),

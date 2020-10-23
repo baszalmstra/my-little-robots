@@ -1,4 +1,6 @@
-use mlr_api::{Coord, Direction, PlayerAction, PlayerInput, PlayerOutput, TileType, Unit, UnitId};
+use mlr_api::{
+    Coord, Direction, PlayerAction, PlayerInput, PlayerOutput, TileType, Unit, UnitId, API_VERSION,
+};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -35,11 +37,14 @@ fn left(direction: Direction) -> Direction {
 /// owns.
 fn tick(input: PlayerInput<Memory>) -> PlayerOutput<Memory> {
     let PlayerInput {
+        version,
         world,
         mut memory,
         player_id,
         turn: _,
     } = input;
+
+    assert_eq!(version, API_VERSION, "mismatched api version");
 
     let mut rng = rand::thread_rng();
 

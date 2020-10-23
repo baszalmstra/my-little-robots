@@ -163,6 +163,8 @@ class PlayerInput:
 
     @staticmethod
     def from_json(json: Any):
+        version = json["version"]
+        assert(version == 1, "mismatched api version")
         return PlayerInput(
             json["player_id"],
             json["turn"],
