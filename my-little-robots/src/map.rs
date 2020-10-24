@@ -10,6 +10,7 @@ pub struct Map {
     pub width: usize,
     pub height: usize,
     pub(crate) tiles: Vec<TileType>,
+    pub(crate) distance_to_exit: Vec<Option<usize>>,
 }
 
 impl BaseMap for Map {
@@ -33,6 +34,7 @@ impl Map {
             width,
             height,
             tiles: vec![TileType::Floor; width * height],
+            distance_to_exit: vec![None; width * height],
         }
     }
 
@@ -41,6 +43,7 @@ impl Map {
             width,
             height,
             tiles: vec![TileType::Wall; width * height],
+            distance_to_exit: vec![None; width * height],
         }
     }
 
@@ -55,6 +58,12 @@ impl Map {
     /// Checks if this tile can be entered
     pub fn can_enter_tile(&self, position: Coord) -> bool {
         self.in_bounds(position) && self[position].can_enter()
+    }
+
+    pub fn get_distance_to_exit<T: Into<Coord>>(&self, position: T) -> Option<usize> {
+        let coord = position.into();
+        let index = coord.x as usize + coord.y as usize * self.width;
+        self.distance_to_exit[index]
     }
 
     /// Returns all the coordinates that can be seen from the given location and within the given range
@@ -83,3 +92,4 @@ impl<T: Into<Coord>> IndexMut<T> for Map {
         &mut self.tiles[index]
     }
 }
+
