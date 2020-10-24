@@ -1,13 +1,4 @@
-use actix_web::{
-    body::Body,
-    get,
-    web,
-    App,
-    HttpRequest,
-    HttpResponse,
-    HttpServer,
-    Responder
-};
+use actix_web::{body::Body, get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use listenfd::ListenFd;
 use mime_guess::from_path;
 use rust_embed::RustEmbed;
@@ -26,7 +17,9 @@ fn handle_embedded_file(path: &str) -> HttpResponse {
                 Cow::Borrowed(bytes) => bytes.into(),
                 Cow::Owned(bytes) => bytes.into(),
             };
-            HttpResponse::Ok().content_type(from_path(path).first_or_octet_stream().as_ref()).body(body)
+            HttpResponse::Ok()
+                .content_type(from_path(path).first_or_octet_stream().as_ref())
+                .body(body)
         }
         None => HttpResponse::NotFound().body("404 Not Found"),
     }
