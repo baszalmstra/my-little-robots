@@ -1,15 +1,15 @@
+mod battle;
 pub mod bracket_lib;
 mod map;
 pub mod map_builder;
 mod runner;
-mod battle;
 
 use async_trait::async_trait;
 use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use self::battle::Battle;
 pub use self::{map::Map, runner::Runner};
-pub use self::{battle::Battle};
 
 use futures::channel::mpsc::unbounded;
 use futures::{SinkExt, StreamExt};

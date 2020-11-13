@@ -1,4 +1,4 @@
-use super::{Map};
+use super::Map;
 
 /// A trait that optionally enables creating snapshots of `Map`s
 pub trait SnapshotableMap {

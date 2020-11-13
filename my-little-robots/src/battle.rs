@@ -1,8 +1,8 @@
-use crate::{Player, PlayerRunner, World, GameState};
-use async_std::sync::{Sender};
-use mlr_api::{PlayerId, Coord};
-use std::time::Duration;
+use crate::{GameState, Player, PlayerRunner, World};
+use async_std::sync::Sender;
+use mlr_api::{Coord, PlayerId};
 use serde_json::json;
+use std::time::Duration;
 
 /// A `Battle` is a struct that contains information about a battle to be played
 pub struct Battle {
@@ -28,7 +28,11 @@ impl Battle {
 
 impl Battle {
     /// Runs the battle to completion, returns the winning player.
-    pub async fn run(self, tick_duration: Option<Duration>, tick_update: Option<Sender<World>>) -> PlayerId {
+    pub async fn run(
+        self,
+        tick_duration: Option<Duration>,
+        tick_update: Option<Sender<World>>,
+    ) -> PlayerId {
         let players = self
             .players
             .into_iter()

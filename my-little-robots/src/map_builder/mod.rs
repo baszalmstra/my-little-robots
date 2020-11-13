@@ -1,4 +1,4 @@
-use super::{Map};
+use super::Map;
 
 mod cellular_automata;
 mod prim;

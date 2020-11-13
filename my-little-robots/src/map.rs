@@ -92,4 +92,3 @@ impl<T: Into<Coord>> IndexMut<T> for Map {
         &mut self.tiles[index]
     }
 }
-
