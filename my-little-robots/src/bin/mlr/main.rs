@@ -3,14 +3,15 @@ mod application;
 use anyhow::Context;
 use anyhow::{anyhow, bail};
 use itertools::Itertools;
-use mlr::GameState;
 use mlr::Player;
 use mlr::Runner;
 use mlr::World;
+use mlr::{Battle, GameState};
 use mlr_api::{Coord, PlayerId};
 use serde_json::json;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
+use std::time::Duration;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -53,53 +54,46 @@ fn try_main() -> anyhow::Result<()> {
 
     match opt {
         MyLittleRobots::Run(run_opt) => {
-            let players = run_opt
+            let mut battle = Battle::default();
+
+            // Parse all runner descriptions into actual runners
+            let runners = run_opt
                 .runners
                 .iter()
-                .enumerate()
-                .map(|(i, r)| -> anyhow::Result<Player> {
-                    let runner = RunnerDesc::parse(r)?;
-                    Ok(Player {
-                        id: PlayerId(i),
-                        runner: Box::new(runner.into_runner()?),
-                        memory: json!({}),
-                    })
+                .map(|runner_desc| -> anyhow::Result<_> {
+                    let runner = RunnerDesc::parse(runner_desc)?;
+                    Ok(Box::new(runner.into_runner()?))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            let mut game_state = GameState {
-                players,
-                world: World::default(),
-            };
-
-            // Spawn a unit for every player
-            for (i, player) in game_state.players.iter().enumerate() {
-                game_state
-                    .world
-                    .spawn_unit(player.id, Coord::new(10 + i as isize * 10, 10));
+            // Add all runners as players to the battle
+            for runner in runners {
+                battle.add_player(runner);
             }
 
-            // Create the world
-            let (sender, receiver) = async_watch::channel(game_state.world.clone());
-
+            // Construct the future for the battle
+            let (sender, receiver) = async_std::sync::channel(1);
             std::thread::spawn(|| {
-                async_std::task::block_on(async move {
-                    // Run the turn in a loop
-                    loop {
-                        game_state = game_state.turn().await;
-                        if sender.send(game_state.world.clone()).is_err() {
-                            break; // Sender closed
-                        }
-                        if game_state.world.units_on_exits().next().is_some() {
-                            break;
-                        }
-                        async_std::task::sleep(std::time::Duration::from_millis(100)).await;
+                async_std::task::block_on(
+                    battle.run(Some(Duration::from_millis(100)), Some(sender)),
+                )
+            });
+
+            // Await the first world send by the battle
+            let world = async_std::task::block_on(receiver.recv())?;
+
+            // Spawn a task that continuously updates the latest world received by the battle.
+            let (world_sender, world_receiver) = async_watch::channel(world);
+            async_std::task::spawn(async move {
+                while let Ok(world) = receiver.recv().await {
+                    if world_sender.send(world).is_err() {
+                        break;
                     }
-                });
+                }
             });
 
             // Render our world
-            application::run(receiver).expect("failed to render");
+            application::run(world_receiver).expect("failed to render");
         }
     }
 
